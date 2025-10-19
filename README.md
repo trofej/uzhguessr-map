@@ -18,7 +18,7 @@ Works as a static site (no backend).
 
 - Edit `data/questions.json` to add or modify questions, images, and coordinates
 - Place new images in the `/images` folder
-- Adjust the map scaling in `mapmode.js` if your map image dimensions change
+- Adjust the map scaling in `index.js` if your map image dimensions change
 
 ## Notes
 
