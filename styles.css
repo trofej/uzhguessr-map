@@ -1,0 +1,24 @@
+:root{ --bg:#0f1221; --card:#171a2e; --text:#e8ecff; --muted:#aab3d6; --accent:#8aa1ff; --accent-2:#76e4f7; --danger:#ff6b6b; --success:#60d394 }
+*{ box-sizing:border-box }
+html,body{ height:100% }
+body{ margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif; background:linear-gradient(180deg,var(--bg),#0b0e1a); color:var(--text); }
+.container{ max-width:900px; margin:0 auto; padding:2rem; }
+.header{ display:flex; justify-content:center; margin-bottom:1rem }
+.header h1{ margin:0; font-size:2rem; letter-spacing:0.5px }
+.screen{ display:none; background:var(--card); border-radius:20px; padding:1.5rem; box-shadow:0 10px 40px rgba(0,0,0,.35) }
+.screen.active{ display:block }
+.status{ display:flex; justify-content:space-between; align-items:center; gap:1rem; margin-bottom:1rem; color:var(--muted) }
+.photo-wrap{ margin:0; background:#0a0d1b; border-radius:16px; overflow:hidden; border:1px solid rgba(255,255,255,.06) }
+.photo-wrap img{ display:block; width:100%; height:360px; object-fit:cover }
+.options{ list-style:none; padding:0; margin:1rem 0; display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:0.75rem }
+.option-btn{ width:100%; text-align:left; padding:0.9rem 1rem; background:#0e1230; color:var(--text); border:1px solid rgba(255,255,255,.08); border-radius:14px; cursor:pointer; transition:transform .06s ease, box-shadow .2s ease, border-color .2s ease }
+.option-btn:hover{ transform:translateY(-1px); box-shadow:0 6px 18px rgba(0,0,0,.25) }
+.option-btn:disabled{ opacity:.9; cursor:default }
+.option-btn.correct{ border-color:var(--success); outline:2px solid color-mix(in oklab, var(--success) 40%, transparent) }
+.option-btn.wrong{ border-color:var(--danger); opacity:.95 }
+.controls{ display:flex; justify-content:flex-end }
+.btn{ padding:0.8rem 1.1rem; border-radius:12px; border:1px solid rgba(255,255,255,.12); background:#0e1230; color:var(--text); cursor:pointer }
+.btn[disabled]{ opacity:.6; cursor:not-allowed }
+.btn.primary{ background:linear-gradient(135deg,var(--accent),var(--accent-2)); border:none; color:#071021; font-weight:600 }
+.sr-only{ position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0 }
+@media (max-width:640px){ .photo-wrap img{ height:240px } }

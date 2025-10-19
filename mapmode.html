@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>UZH Map Guessr</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="container">
+    <header class="header">
+      <h1>UZH Map Guessr</h1>
+    </header>
+
+    <!-- START SCREEN -->
+    <section id="screen-start" class="screen active" aria-labelledby="start-title">
+      <h2 id="start-title">Ready to play?</h2>
+      <p>You’ll get a question like “Where is the Uni Aula located?” — click on the correct spot on the UZH map.</p>
+      <button id="btn-start" class="btn primary">Start Map Mode</button>
+    </section>
+
+    <!-- GAME SCREEN -->
+    <section id="screen-game" class="screen" aria-live="polite">
+      <div class="status">
+        <div id="round-indicator" aria-live="polite">Round 1/5</div>
+        <div id="score-indicator" aria-live="polite">Score: 0</div>
+      </div>
+
+      <!-- Question Image -->
+      <figure class="photo-wrap" style="margin-bottom: 1rem;">
+        <img id="question-image" src="" alt="Current location image" />
+      </figure>
+
+      <!-- Question text -->
+      <h3 id="question-text" style="margin-top:0.5rem;margin-bottom:1rem;"></h3>
+
+      <!-- Map container -->
+      <figure class="photo-wrap" style="position:relative;">
+        <img id="campus-map" src="images/uzh_map.jpeg" alt="UZH map" />
+        <div id="marker"></div>
+        <div id="correct-marker"></div>
+      </figure>
+
+      <div class="controls">
+        <button id="btn-next" class="btn" disabled>Next</button>
+      </div>
+    </section>
+
+    <!-- RESULT SCREEN -->
+    <section id="screen-result" class="screen" aria-labelledby="result-title">
+      <h2 id="result-title">Results</h2>
+      <p id="result-summary"></p>
+      <button id="btn-restart" class="btn primary">Play Again</button>
+    </section>
+  </main>
+
+  <script src="mapmode.js" type="module"></script>
+</body>
+</html>
