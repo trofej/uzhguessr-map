@@ -50,7 +50,36 @@
     <section id="screen-result" class="screen" aria-labelledby="result-title">
       <h2 id="result-title">Results</h2>
       <p id="result-summary"></p>
-      <button id="btn-restart" class="btn primary">Play Again</button>
+
+      <!-- Name entry for leaderboard (shown only when allowed) -->
+      <div id="name-entry" style="display:none; margin-top:1rem;">
+        <label for="player-name" style="color:var(--muted)">Enter your name to join the leaderboard (min 5 correct):</label>
+        <div style="margin-top:0.5rem; display:flex; gap:0.5rem; align-items:center;">
+          <input id="player-name" type="text" maxlength="20" placeholder="Your name" style="padding:0.6rem; border-radius:8px; border:1px solid rgba(255,255,255,0.08); background:transparent; color:var(--text)" />
+          <button id="btn-save-score" class="btn primary">Save Score</button>
+        </div>
+      </div>
+
+      <!-- Leaderboard -->
+      <div id="leaderboard" style="margin-top:1.5rem;">
+        <h3>Leaderboard</h3>
+        <table id="leaderboard-table" style="width:100%; border-collapse:collapse; text-align:left;">
+          <thead>
+            <tr>
+              <th style="padding:0.5rem 0.3rem;">#</th>
+              <th style="padding:0.5rem 0.3rem;">Name</th>
+              <th style="padding:0.5rem 0.3rem;">Correct</th>
+              <th style="padding:0.5rem 0.3rem;">Total Distance (km)</th>
+            </tr>
+          </thead>
+          <tbody id="leaderboard-body"></tbody>
+        </table>
+        <div style="margin-top:0.75rem;">
+          <button id="btn-clear-leaderboard" class="btn" title="Clear leaderboard (local only)">Clear Leaderboard</button>
+        </div>
+      </div>
+
+      <button id="btn-restart" class="btn primary" style="margin-top:1.2rem;">Play Again</button>
     </section>
   </main>
 
