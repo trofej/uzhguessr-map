@@ -301,21 +301,33 @@ function sanitizeName(name) {
   return clean.slice(0, 20);
 }
 
-function loadLeaderboard() {
+// Load leaderboard from Wix backend
+async function loadLeaderboard() {
   try {
-    return JSON.parse(localStorage.getItem(LEADERBOARD_KEY) || "[]");
-  } catch {
+    const { getLeaderboard } = await import('backend/leaderboard.jsw');
+    const data = await getLeaderboard();
+    return data || [];
+  } catch (err) {
+    console.error("Failed to load leaderboard:", err);
     return [];
   }
 }
 
-function saveLeaderboard(data) {
-  localStorage.setItem(LEADERBOARD_KEY, JSON.stringify(data || []));
+// Save new entry to Wix backend
+async function saveToLeaderboard(entry) {
+  try {
+    const { addScore } = await import('backend/leaderboard.jsw');
+    await addScore(entry.name, entry.correct, entry.distance);
+    showMessage("✅ Saved to global leaderboard", "var(--accent)");
+  } catch (err) {
+    console.error("Failed to save leaderboard entry:", err);
+    showMessage("⚠️ Could not save score", "var(--danger)");
+  }
 }
 
-function renderLeaderboard() {
-  const data = loadLeaderboard();
-  // Sort: correct desc, distance asc
+// Render leaderboard (load from Wix each time)
+async function renderLeaderboard() {
+  const data = await loadLeaderboard();
   data.sort((a, b) => {
     if (b.correct !== a.correct) return b.correct - a.correct;
     return a.distance - b.distance;
@@ -341,34 +353,28 @@ function escapeHtml(s) {
   });
 }
 
-// Save score button handler
-btnSaveScore.addEventListener("click", () => {
+
+btnSaveScore.addEventListener("click", async () => {
   const raw = playerNameInput.value;
   const clean = sanitizeName(raw);
   if (!clean) {
-    alert("Please enter a valid, non-offensive name (1-20 characters).");
+    alert("Please enter a valid, non-offensive name (1–20 characters).");
     return;
   }
-
-  // Only allow saving if player qualifies: at least 5 correct
   if (score < 5) {
     alert("You need at least 5 correct answers to join the leaderboard.");
     return;
   }
 
-  const data = loadLeaderboard();
-  data.push({
+  await saveToLeaderboard({
     name: clean,
     correct: score,
-    distance: parseFloat(totalDistanceKm.toFixed(3)),
-    ts: Date.now()
+    distance: parseFloat(totalDistanceKm.toFixed(3))
   });
 
-  saveLeaderboard(data);
   playerNameInput.value = "";
   nameEntry.style.display = "none";
   renderLeaderboard();
-  showMessage("Saved to leaderboard ✅", "var(--accent)");
 });
 
 // Clear leaderboard (local only)
