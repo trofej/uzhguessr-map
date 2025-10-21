@@ -101,8 +101,34 @@ campusMap.addEventListener("click", e => {
   if (guessLocked) return;
 
   const rect = campusMap.getBoundingClientRect();
-  const x = ((e.clientX - rect.left) / rect.width) * 100;
-  const y = ((e.clientY - rect.top) / rect.height) * 100;
+
+  // 1️⃣ Get native vs displayed image dimensions
+  const naturalWidth = campusMap.naturalWidth;
+  const naturalHeight = campusMap.naturalHeight;
+  const displayWidth = rect.width;
+  const displayHeight = rect.height;
+
+  // 2️⃣ Compute scaling factor (how much the image was scaled)
+  const scale = Math.min(displayWidth / naturalWidth, displayHeight / naturalHeight);
+
+  // 3️⃣ Determine the size of the *visible* (drawn) image
+  const drawnWidth = naturalWidth * scale;
+  const drawnHeight = naturalHeight * scale;
+
+  // 4️⃣ Calculate margins (letterbox offsets)
+  const offsetX = (displayWidth - drawnWidth) / 2;
+  const offsetY = (displayHeight - drawnHeight) / 2;
+
+  // 5️⃣ Adjust the click coordinates to the *true map area*
+  const clickX = e.clientX - rect.left - offsetX;
+  const clickY = e.clientY - rect.top - offsetY;
+
+  // 6️⃣ Convert to percentages relative to the *true drawn area*
+  const x = (clickX / drawnWidth) * 100;
+  const y = (clickY / drawnHeight) * 100;
+
+  // Prevent clicks outside visible image area
+  if (x < 0 || x > 100 || y < 0 || y > 100) return;
 
   userGuess = { x, y };
   marker.style.left = `${x}%`;
