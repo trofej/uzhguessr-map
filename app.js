@@ -1,18 +1,17 @@
-// ==============================
-// UZH Map Guessr with Wix Leaderboard
-// ==============================
-
+// UZH Map Guessr with Leaderboard
 const TOTAL_QUESTIONS = 10; // Number of questions per game
-const API_URL = "https://www.uzhguessr.com/_functions/leaderboard"; // ✅ Wix backend endpoint
 
 // State
 let currentIndex = 0;
 let score = 0;
 let userGuess = null;
 let guessLocked = false;
-let QUESTIONS = [];
-let gameQuestions = [];
-let totalDistanceKm = 0;
+let QUESTIONS = []; // loaded from JSON
+let gameQuestions = []; // the 5 random questions for current game
+let totalDistanceKm = 0; // accumulated distance for current game
+
+// Leaderboard storage key
+const LEADERBOARD_KEY = "uzh_map_leaderboard_v1";
 
 // Elements
 const screenStart = document.getElementById("screen-start");
@@ -69,12 +68,13 @@ async function loadQuestions() {
     QUESTIONS = await res.json();
   } catch (err) {
     console.error("Failed to load questions:", err);
-    QUESTIONS = [];
+    QUESTIONS = []; // keep empty
   }
 }
 
-// Shuffle helper
+// Helper: shuffle an array
 function shuffleArray(array) {
+  // Fisher-Yates would be better, but this is simple and fine here
   return array.sort(() => Math.random() - 0.5);
 }
 
@@ -88,6 +88,7 @@ function setScreen(target) {
 async function startGame() {
   if (QUESTIONS.length === 0) await loadQuestions();
 
+  // Pick random questions for this game (if not enough questions, use all)
   const pool = [...QUESTIONS];
   shuffleArray(pool);
   gameQuestions = pool.slice(0, Math.min(TOTAL_QUESTIONS, pool.length));
@@ -116,87 +117,110 @@ function renderRound() {
   btnNext.disabled = true;
 
   questionImage.src = q.image;
+  // campusMap image already set in HTML; ensure it is up-to-date if you want a different map
+  // campusMap.src = "images/uzh_map.jpeg";
 }
 
-// Compute draw parameters for campus map
+// compute draw params for campusMap (drawW/drawH and offsets)
 function computeDrawParams() {
   const rect = campusMap.getBoundingClientRect();
   const dispW = rect.width;
   const dispH = rect.height;
   const natW = campusMap.naturalWidth || 1;
   const natH = campusMap.naturalHeight || 1;
+
   const style = window.getComputedStyle(campusMap);
   const objectFit = style.getPropertyValue('object-fit') || 'fill';
 
-  const scale = objectFit === 'cover'
-    ? Math.max(dispW / natW, dispH / natH)
-    : Math.min(dispW / natW, dispH / natH);
+  let scale, drawW, drawH, offsetX, offsetY;
+  if (objectFit === 'cover') {
+    scale = Math.max(dispW / natW, dispH / natH);
+  } else {
+    scale = Math.min(dispW / natW, dispH / natH);
+  }
+  drawW = natW * scale;
+  drawH = natH * scale;
+  offsetX = (dispW - drawW) / 2;
+  offsetY = (dispH - drawH) / 2;
 
-  const drawW = natW * scale;
-  const drawH = natH * scale;
-  const offsetX = (dispW - drawW) / 2;
-  const offsetY = (dispH - drawH) / 2;
-
-  return { rect, dispW, dispH, drawW, drawH, offsetX, offsetY };
+  return { rect, dispW, dispH, natW, natH, drawW, drawH, offsetX, offsetY };
 }
 
-// Map click
+// Map click handler (robust)
 campusMap.addEventListener("click", (e) => {
   if (guessLocked) return;
 
   const { rect, dispW, dispH, drawW, drawH, offsetX, offsetY } = computeDrawParams();
+
+  // coordinates relative to the element top-left
   const localX = e.clientX - rect.left;
   const localY = e.clientY - rect.top;
-  const clickX = localX - offsetX;
-  const clickY = localY - offsetY;
 
-  if (clickX < 0 || clickX > drawW || clickY < 0 || clickY > drawH) {
+  // coordinates relative to the drawn image area
+  const clickX_onDrawn = localX - offsetX;
+  const clickY_onDrawn = localY - offsetY;
+
+  // ignore clicks outside the visible image area (letterbox)
+  if (clickX_onDrawn < 0 || clickX_onDrawn > drawW || clickY_onDrawn < 0 || clickY_onDrawn > drawH) {
+    // optional small feedback: flash a little message
     showMessage("Click inside the map area", "rgba(255,255,255,0.9)");
     return;
   }
 
-  const xPct = (clickX / drawW) * 100;
-  const yPct = (clickY / drawH) * 100;
+  // convert to percentages relative to the drawn image
+  const xPct = (clickX_onDrawn / drawW) * 100;
+  const yPct = (clickY_onDrawn / drawH) * 100;
 
+  // Save guess
   userGuess = { x: xPct, y: yPct };
 
+  // Compute marker positions relative to the container (so left/top % work)
+  // left% = (offsetX + xPct/100 * drawW) / dispW * 100
   const leftPercent = ((offsetX + (xPct / 100) * drawW) / dispW) * 100;
-  const topPercent = ((offsetY + (yPct / 100) * drawH) / dispH) * 100;
+  const topPercent  = ((offsetY + (yPct / 100) * drawH) / dispH) * 100;
+
   marker.style.left = `${leftPercent}%`;
-  marker.style.top = `${topPercent}%`;
+  marker.style.top  = `${topPercent}%`;
   marker.style.display = "block";
 
-  checkAnswer();
+  // Lock and evaluate
+  checkAnswer(); // checkAnswer will use gameQuestions[currentIndex].x/.y (they are percentages relative to the intrinsic image)
   guessLocked = true;
 });
 
-// Calculate distance
+// Helper: convert percentage distance to kilometers
 function calculateDistanceKm(x1, y1, x2, y2) {
-  const mapWidthKm = 13;
-  const mapHeightKm = 9;
+  // Adjust these to reflect real campus extents if you want more accuracy.
+  const mapWidthKm = 13;  // width of the map in km (approx)
+  const mapHeightKm = 9;  // height of the map in km (approx)
+
   const dxKm = ((x2 - x1) / 100) * mapWidthKm;
   const dyKm = ((y2 - y1) / 100) * mapHeightKm;
+
   return Math.sqrt(dxKm * dxKm + dyKm * dyKm);
 }
 
-// Check answer
+// Check answer (updates score and totalDistanceKm)
 function checkAnswer() {
   const q = gameQuestions[currentIndex];
   if (!userGuess) return;
 
-  const distanceKm = calculateDistanceKm(userGuess.x, userGuess.y, q.x, q.y);
-  totalDistanceKm += distanceKm;
-
-  const { dispW, dispH, drawW, drawH, offsetX, offsetY } = computeDrawParams();
-  const correctLeft = ((offsetX + (q.x / 100) * drawW) / dispW) * 100;
-  const correctTop = ((offsetY + (q.y / 100) * drawH) / dispH) * 100;
-  correctMarker.style.left = `${correctLeft}%`;
-  correctMarker.style.top = `${correctTop}%`;
-  correctMarker.style.display = "block";
-
   const dx = q.x - userGuess.x;
   const dy = q.y - userGuess.y;
   const distancePercent = Math.sqrt(dx * dx + dy * dy);
+
+  // Calculate distance in km and accumulate
+  const distanceKm = calculateDistanceKm(userGuess.x, userGuess.y, q.x, q.y);
+  totalDistanceKm += distanceKm;
+
+  // Place correct marker using same drawn-image computations
+  const { dispW, dispH, drawW, drawH, offsetX, offsetY } = computeDrawParams();
+  const correctLeftPercent = ((offsetX + (q.x / 100) * drawW) / dispW) * 100;
+  const correctTopPercent  = ((offsetY + (q.y / 100) * drawH) / dispH) * 100;
+
+  correctMarker.style.left = `${correctLeftPercent}%`;
+  correctMarker.style.top  = `${correctTopPercent}%`;
+  correctMarker.style.display = "block";
 
   if (distancePercent < 5) {
     score++;
@@ -209,7 +233,7 @@ function checkAnswer() {
   btnNext.disabled = false;
 }
 
-// Show floating message
+// Show message (temporary)
 function showMessage(text, color) {
   const msg = document.createElement("div");
   msg.textContent = text;
@@ -238,49 +262,65 @@ btnNext.addEventListener("click", () => {
   }
 });
 
-// Finish game
+// Finish game (show results and leaderboard)
 function finish() {
   resultSummary.textContent = `You scored ${score} out of ${gameQuestions.length}. Total distance: ${totalDistanceKm.toFixed(2)} km.`;
   setScreen(screenResult);
+
+  // Render leaderboard for display to everyone
   renderLeaderboard();
-  nameEntry.style.display = score >= 5 ? "block" : "none";
+
+  // Show name entry only if player scored at least 5 correct
+  if (score >= 5) {
+    nameEntry.style.display = "block";
+  } else {
+    nameEntry.style.display = "none";
+  }
 }
 
-// ==============================
-// --- Leaderboard (Wix backend)
-// ==============================
+// Leaderboard helpers
 
-// Load leaderboard
-async function loadLeaderboard() {
+// sanitize input and block obviously offensive words (simple filter)
+function sanitizeName(name) {
+  if (!name) return null;
+  let clean = name.trim();
+  // Remove weird characters but keep letters, numbers, spaces and basic punctuation
+  clean = clean.replace(/[^\p{L}\p{N} \-_'"]/gu, "");
+  // Minimum length after trimming
+  if (clean.length < 1) return null;
+
+  // simple offensive words list (case-insensitive)
+  const badWords = [
+    "fuck","shit","bitch","ass","dick","cock","cunt","nigger","fag","whore","slut","sex","arse"
+  ];
+  const lowered = clean.toLowerCase();
+  for (const bad of badWords) {
+    if (lowered.includes(bad)) return null;
+  }
+  // Trim to reasonable length
+  return clean.slice(0, 20);
+}
+
+function loadLeaderboard() {
   try {
-    const res = await fetch(API_URL);
-    const data = await res.json();
-    return Array.isArray(data.items) ? data.items : [];
-  } catch (err) {
-    console.error("❌ Failed to load leaderboard:", err);
+    return JSON.parse(localStorage.getItem(LEADERBOARD_KEY) || "[]");
+  } catch {
     return [];
   }
 }
 
-// Save leaderboard entry
-async function saveLeaderboardEntry(name, correct, distance) {
-  try {
-    const res = await fetch(API_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, correct, distance }),
-    });
-    if (!res.ok) throw new Error("Server error");
-    showMessage("Saved to leaderboard ✅", "var(--accent)");
-  } catch (err) {
-    console.error("❌ Failed to save leaderboard:", err);
-    alert("Could not save your score, please try again later.");
-  }
+function saveLeaderboard(data) {
+  localStorage.setItem(LEADERBOARD_KEY, JSON.stringify(data || []));
 }
 
-// Render leaderboard
-async function renderLeaderboard() {
-  const data = await loadLeaderboard();
+function renderLeaderboard() {
+  const data = loadLeaderboard();
+  // Sort: correct desc, distance asc
+  data.sort((a, b) => {
+    if (b.correct !== a.correct) return b.correct - a.correct;
+    return a.distance - b.distance;
+  });
+
   leaderboardBody.innerHTML = "";
   data.forEach((entry, i) => {
     const row = document.createElement("tr");
@@ -288,41 +328,62 @@ async function renderLeaderboard() {
       <td style="padding:0.4rem 0.3rem;">${i + 1}</td>
       <td style="padding:0.4rem 0.3rem;">${escapeHtml(entry.name)}</td>
       <td style="padding:0.4rem 0.3rem;">${entry.correct}</td>
-      <td style="padding:0.4rem 0.3rem;">${Number(entry.distance).toFixed(2)}</td>
+      <td style="padding:0.4rem 0.3rem;">${entry.distance.toFixed(2)}</td>
     `;
     leaderboardBody.appendChild(row);
   });
 }
 
-// Escape HTML
+// small utility to avoid injecting raw HTML
 function escapeHtml(s) {
-  return String(s).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+  return String(s).replace(/[&<>"']/g, function (m) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m];
+  });
 }
 
-// Sanitize name
-function sanitizeName(name) {
-  return name ? name.trim().replace(/[^a-zA-Z0-9 _-]/g, "").slice(0, 20) : "";
-}
+// Save score button handler
+btnSaveScore.addEventListener("click", () => {
+  const raw = playerNameInput.value;
+  const clean = sanitizeName(raw);
+  if (!clean) {
+    alert("Please enter a valid, non-offensive name (1-20 characters).");
+    return;
+  }
 
-// Save score
-btnSaveScore.addEventListener("click", async () => {
-  const clean = sanitizeName(playerNameInput.value);
-  if (!clean) return alert("Please enter a valid name.");
-  if (score < 5) return alert("You need at least 5 correct answers to join the leaderboard.");
-  await saveLeaderboardEntry(clean, score, parseFloat(totalDistanceKm.toFixed(3)));
+  // Only allow saving if player qualifies: at least 5 correct
+  if (score < 5) {
+    alert("You need at least 5 correct answers to join the leaderboard.");
+    return;
+  }
+
+  const data = loadLeaderboard();
+  data.push({
+    name: clean,
+    correct: score,
+    distance: parseFloat(totalDistanceKm.toFixed(3)),
+    ts: Date.now()
+  });
+
+  saveLeaderboard(data);
   playerNameInput.value = "";
   nameEntry.style.display = "none";
-  await renderLeaderboard();
+  renderLeaderboard();
+  showMessage("Saved to leaderboard ✅", "var(--accent)");
 });
 
-// Clear leaderboard (local cache disabled)
+// Clear leaderboard (local only)
 btnClearLeaderboard.addEventListener("click", () => {
-  alert("Leaderboard is stored on the server. It cannot be cleared locally.");
+  if (!confirm("Clear the leaderboard locally? This will remove all saved entries in your browser.")) return;
+  saveLeaderboard([]);
+  renderLeaderboard();
+  showMessage("Leaderboard cleared", "rgba(255,255,255,0.9)");
 });
 
-// ==============================
-// --- Event bindings
-// ==============================
+// Event listeners
 btnRestart.addEventListener("click", () => setScreen(screenStart));
 btnStart.addEventListener("click", startGame);
-document.addEventListener("DOMContentLoaded", renderLeaderboard);
+
+// On load render leaderboard (so it's visible on the result screen initially)
+document.addEventListener("DOMContentLoaded", () => {
+  renderLeaderboard();
+});
