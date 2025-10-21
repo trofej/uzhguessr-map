@@ -97,45 +97,86 @@ function renderRound() {
 }
 
 // Map click handler
-campusMap.addEventListener("click", e => {
+// Robust click handler that accounts for object-fit (contain / cover) and letterboxing
+campusMap.addEventListener("click", (e) => {
   if (guessLocked) return;
 
   const rect = campusMap.getBoundingClientRect();
 
-  // 1️⃣ Get native vs displayed image dimensions
-  const naturalWidth = campusMap.naturalWidth;
-  const naturalHeight = campusMap.naturalHeight;
-  const displayWidth = rect.width;
-  const displayHeight = rect.height;
+  // intrinsic image size
+  const natW = campusMap.naturalWidth;
+  const natH = campusMap.naturalHeight;
+  if (!natW || !natH) return; // image not loaded yet
 
-  // 2️⃣ Compute scaling factor (how much the image was scaled)
-  const scale = Math.min(displayWidth / naturalWidth, displayHeight / naturalHeight);
+  // displayed element size
+  const dispW = rect.width;
+  const dispH = rect.height;
 
-  // 3️⃣ Determine the size of the *visible* (drawn) image
-  const drawnWidth = naturalWidth * scale;
-  const drawnHeight = naturalHeight * scale;
+  // computed object-fit used by browser (default may be "fill", "contain", "cover")
+  const style = window.getComputedStyle(campusMap);
+  const objectFit = style.getPropertyValue('object-fit') || 'fill';
 
-  // 4️⃣ Calculate margins (letterbox offsets)
-  const offsetX = (displayWidth - drawnWidth) / 2;
-  const offsetY = (displayHeight - drawnHeight) / 2;
+  // compute the drawn image size (drawW/drawH) inside the element
+  let scale, drawW, drawH, offsetX, offsetY;
 
-  // 5️⃣ Adjust the click coordinates to the *true map area*
-  const clickX = e.clientX - rect.left - offsetX;
-  const clickY = e.clientY - rect.top - offsetY;
+  if (objectFit === 'cover') {
+    // image is scaled to cover element, may be cropped
+    scale = Math.max(dispW / natW, dispH / natH);
+    drawW = natW * scale;
+    drawH = natH * scale;
+    // offsets (can be negative if image larger than container)
+    offsetX = (dispW - drawW) / 2;
+    offsetY = (dispH - drawH) / 2;
+  } else if (objectFit === 'contain' || objectFit === 'scale-down' || objectFit === 'none') {
+    // contain or default behavior (no cropping)
+    // for 'none' the image may be smaller than container; still works
+    scale = Math.min(dispW / natW, dispH / natH);
+    drawW = natW * scale;
+    drawH = natH * scale;
+    offsetX = (dispW - drawW) / 2;
+    offsetY = (dispH - drawH) / 2;
+  } else {
+    // fallback for unexpected object-fit values (treat as contain)
+    scale = Math.min(dispW / natW, dispH / natH);
+    drawW = natW * scale;
+    drawH = natH * scale;
+    offsetX = (dispW - drawW) / 2;
+    offsetY = (dispH - drawH) / 2;
+  }
 
-  // 6️⃣ Convert to percentages relative to the *true drawn area*
-  const x = (clickX / drawnWidth) * 100;
-  const y = (clickY / drawnHeight) * 100;
+  // coordinates relative to the element top-left (client coords -> element local coords)
+  const localX = e.clientX - rect.left;
+  const localY = e.clientY - rect.top;
 
-  // Prevent clicks outside visible image area
-  if (x < 0 || x > 100 || y < 0 || y > 100) return;
+  // coordinates relative to the drawn image area
+  const clickX_onDrawn = localX - offsetX;
+  const clickY_onDrawn = localY - offsetY;
 
-  userGuess = { x, y };
-  marker.style.left = `${x}%`;
-  marker.style.top = `${y}%`;
+  // ignore clicks outside the visible image area (letterbox)
+  if (clickX_onDrawn < 0 || clickX_onDrawn > drawW || clickY_onDrawn < 0 || clickY_onDrawn > drawH) {
+    // optionally show a small hint or ignore
+    return;
+  }
+
+  // convert to percentages relative to the drawn image
+  const xPct = (clickX_onDrawn / drawW) * 100;
+  const yPct = (clickY_onDrawn / drawH) * 100;
+
+  // Save guess
+  userGuess = { x: xPct, y: yPct };
+
+  // Compute marker positions relative to the container (so left/top % work)
+  // left% = (offsetX + xPct/100 * drawW) / dispW * 100
+  const leftPercent = ((offsetX + (xPct / 100) * drawW) / dispW) * 100;
+  const topPercent  = ((offsetY + (yPct / 100) * drawH) / dispH) * 100;
+
+  marker.style.left = `${leftPercent}%`;
+  marker.style.top  = `${topPercent}%`;
   marker.style.display = "block";
 
-  checkAnswer();
+  // Show correct marker similarly (we'll compute position below in checkAnswer)
+  // Lock and evaluate
+  checkAnswer(); // checkAnswer will use QUESTIONS[currentIndex].x/ .y (they are percentages relative to intrinsic image)
   guessLocked = true;
 });
 
