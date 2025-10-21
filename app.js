@@ -277,7 +277,6 @@ function finish() {
     nameEntry.style.display = "none";
   }
 }
-
 // Leaderboard helpers
 
 // sanitize input and block obviously offensive words (simple filter)
@@ -301,10 +300,11 @@ function sanitizeName(name) {
   return clean.slice(0, 20);
 }
 
+import { addScore, getLeaderboard } from 'backend/leaderboard.jsw';
+
 // Load leaderboard from Wix backend
 async function loadLeaderboard() {
   try {
-    const { getLeaderboard } = await import('backend/leaderboard.jsw');
     const data = await getLeaderboard();
     return data || [];
   } catch (err) {
@@ -316,7 +316,6 @@ async function loadLeaderboard() {
 // Save new entry to Wix backend
 async function saveToLeaderboard(entry) {
   try {
-    const { addScore } = await import('backend/leaderboard.jsw');
     await addScore(entry.name, entry.correct, entry.distance);
     showMessage("✅ Saved to global leaderboard", "var(--accent)");
   } catch (err) {
