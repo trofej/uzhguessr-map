@@ -2,8 +2,6 @@
 // UZH Map Guessr - Wix Page Code
 // ======================
 
-import { addScore, getLeaderboard } from 'backend/leaderboard.jsw';
-
 // ----------------------
 // Constants & State
 // ----------------------
@@ -183,23 +181,29 @@ function finish() {
 // Leaderboard Functions
 // ----------------------
 async function loadLeaderboard() {
-    try {
-        const data = await getLeaderboard();
-        return data || [];
-    } catch (err) {
-        console.error(err);
-        return [];
-    }
+  try {
+    const res = await fetch("/_functions/get_getLeaderboard"); // Wix HTTP function
+    const data = await res.json();
+    return data || [];
+  } catch (err) {
+    console.error("Failed to load leaderboard:", err);
+    return [];
+  }
 }
 
+
 async function saveToLeaderboard(entry) {
-    try {
-        await addScore(entry.name, entry.correct, entry.distance);
-        showMessage("✅ Saved to global leaderboard", "var(--accent)");
-    } catch (err) {
-        console.error(err);
-        showMessage("⚠️ Could not save score", "var(--danger)");
-    }
+  try {
+    await fetch("/_functions/post_addScore", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(entry)
+    });
+    showMessage("✅ Saved to global leaderboard", "var(--accent)");
+  } catch (err) {
+    console.error("Failed to save leaderboard entry:", err);
+    showMessage("⚠️ Could not save score", "var(--danger)");
+  }
 }
 
 async function renderLeaderboard() {
