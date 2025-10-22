@@ -32,7 +32,6 @@ const nameEntry = document.getElementById("name-entry");
 const playerNameInput = document.getElementById("player-name");
 const btnSaveScore = document.getElementById("btn-save-score");
 const leaderboardBody = document.getElementById("leaderboard-body");
-const btnClearLeaderboard = document.getElementById("btn-clear-leaderboard");
 
 // Style markers
 Object.assign(marker.style, {
@@ -301,26 +300,34 @@ function sanitizeName(name) {
   return clean.slice(0, 20);
 }
 
-function loadLeaderboard() {
+// Firestore leaderboard functions
+async function loadLeaderboard() {
   try {
-    return JSON.parse(localStorage.getItem(LEADERBOARD_KEY) || "[]");
-  } catch {
+    const q = fbQuery(fbCollection(window.db, "leaderboard"),
+                      fbOrderBy("correct", "desc"),
+                      fbOrderBy("distance", "asc"));
+    const snap = await fbGetDocs(q);
+    const entries = [];
+    snap.forEach(doc => entries.push(doc.data()));
+    return entries;
+  } catch (err) {
+    console.error("Failed to load leaderboard:", err);
     return [];
   }
 }
 
-function saveLeaderboard(data) {
-  localStorage.setItem(LEADERBOARD_KEY, JSON.stringify(data || []));
+async function saveToLeaderboard(entry) {
+  try {
+    await fbAddDoc(fbCollection(window.db, "leaderboard"), entry);
+    showMessage("✅ Saved to global leaderboard", "var(--accent)");
+  } catch (err) {
+    console.error("Error saving to leaderboard:", err);
+    showMessage("⚠️ Failed to save score", "var(--danger)");
+  }
 }
 
-function renderLeaderboard() {
-  const data = loadLeaderboard();
-  // Sort: correct desc, distance asc
-  data.sort((a, b) => {
-    if (b.correct !== a.correct) return b.correct - a.correct;
-    return a.distance - b.distance;
-  });
-
+async function renderLeaderboard() {
+  const data = await loadLeaderboard();
   leaderboardBody.innerHTML = "";
   data.forEach((entry, i) => {
     const row = document.createElement("tr");
@@ -334,6 +341,8 @@ function renderLeaderboard() {
   });
 }
 
+
+
 // small utility to avoid injecting raw HTML
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, function (m) {
@@ -341,43 +350,32 @@ function escapeHtml(s) {
   });
 }
 
-// Save score button handler
-btnSaveScore.addEventListener("click", () => {
+// Save score button handler (Firebase version)
+btnSaveScore.addEventListener("click", async () => {
   const raw = playerNameInput.value;
   const clean = sanitizeName(raw);
   if (!clean) {
-    alert("Please enter a valid, non-offensive name (1-20 characters).");
+    alert("Please enter a valid, non-offensive name (1–20 characters).");
     return;
   }
-
-  // Only allow saving if player qualifies: at least 5 correct
   if (score < 5) {
     alert("You need at least 5 correct answers to join the leaderboard.");
     return;
   }
 
-  const data = loadLeaderboard();
-  data.push({
+  const entry = {
     name: clean,
     correct: score,
     distance: parseFloat(totalDistanceKm.toFixed(3)),
     ts: Date.now()
-  });
+  };
 
-  saveLeaderboard(data);
+  await saveToLeaderboard(entry);
   playerNameInput.value = "";
   nameEntry.style.display = "none";
   renderLeaderboard();
-  showMessage("Saved to leaderboard ✅", "var(--accent)");
 });
 
-// Clear leaderboard (local only)
-btnClearLeaderboard.addEventListener("click", () => {
-  if (!confirm("Clear the leaderboard locally? This will remove all saved entries in your browser.")) return;
-  saveLeaderboard([]);
-  renderLeaderboard();
-  showMessage("Leaderboard cleared", "rgba(255,255,255,0.9)");
-});
 
 // Event listeners
 btnRestart.addEventListener("click", () => setScreen(screenStart));

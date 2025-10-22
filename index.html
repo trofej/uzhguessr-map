@@ -74,14 +74,37 @@
           </thead>
           <tbody id="leaderboard-body"></tbody>
         </table>
-        <div style="margin-top:0.75rem;">
-          <button id="btn-clear-leaderboard" class="btn" title="Clear leaderboard (local only)">Clear Leaderboard</button>
-        </div>
       </div>
 
       <button id="btn-restart" class="btn primary" style="margin-top:1.2rem;">Play Again</button>
     </section>
   </main>
+
+  <!-- Firebase SDKs -->
+<script type="module">
+  // Import the Firebase SDKs
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+  import { getFirestore, collection, addDoc, getDocs, query, orderBy } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+
+// Your web app's Firebase configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyCXMlSFVxzzlunW3Goh_6rMWCnbYCXanRQ",
+  authDomain: "uzh-guessr.firebaseapp.com",
+  projectId: "uzh-guessr",
+  storageBucket: "uzh-guessr.firebasestorage.app",
+  messagingSenderId: "599787012847",
+  appId: "1:599787012847:web:42efa3f57ee083546c111a"
+};
+
+  // Initialize Firebase and export db
+  const app = initializeApp(firebaseConfig);
+  window.db = getFirestore(app);
+  window.fbAddDoc = addDoc;
+  window.fbGetDocs = getDocs;
+  window.fbCollection = collection;
+  window.fbQuery = query;
+  window.fbOrderBy = orderBy;
+</script>
 
   <script src="app.js" type="module"></script>
 </body>
