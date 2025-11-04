@@ -45,10 +45,15 @@ document.addEventListener("DOMContentLoaded", () => {
   // Center on central Zürich, zoomed to campuses
   map = L.map('map', {
     zoomControl: true,
-    attributionControl: true
+    attributionControl: true,
+    maxZoom: 19,
+    minZoom: 13,              // 🔒 don't allow zooming too far out
+    zoomAnimation: true,
+    fadeAnimation: true,
+    markerZoomAnimation: true
   }).setView([47.3769, 8.5417], 14);
 
-  // Free OSM tiles
+  // Fast tiles (MapTiler Bright) – your key
   L.tileLayer(
     'https://api.maptiler.com/maps/bright/{z}/{x}/{y}.png?key=0m0ly2WMir4T3fpwYwHi',
     {
@@ -60,7 +65,18 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   ).addTo(map);
 
-  // Blue-ish UI accents are handled via CSS (see app.css/theme tweaks)
+  // 🔒 Lock movement to Zurich area only (bounds + gentle padding)
+  const zurichBounds = L.latLngBounds(
+    [47.41, 8.50], // NW limit
+    [47.35, 8.60]  // SE limit
+  );
+  map.setMaxBounds(zurichBounds.pad(0.08));
+  map.on('drag', () => {
+    map.panInsideBounds(zurichBounds, { animate: false });
+  });
+
+  // Auto-center to overview on initial load
+  map.whenReady(() => resetView());
 
   // Place guess on click
   map.on('click', (e) => {
@@ -70,6 +86,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
   renderLeaderboard(); // show initial leaderboard on load
 });
+
+// Helper: reset view to Zurich overview
+function resetView() {
+  map.flyTo([47.3769, 8.5417], 14, {
+    animate: true,
+    duration: 0.8
+  });
+}
 
 // Questions
 async function loadQuestions() {
@@ -129,9 +153,8 @@ function renderRound() {
   // Clear previous round markers/lines
   clearGuessArtifacts();
 
-  // Zoom the map so both Zentrum/Irchel areas feel comfortable
-  // (We keep a city-wide view; users can zoom freely)
-  // Optionally fit to campus bounds later if you want.
+  // Recenter to overview each round
+  resetView();
 }
 
 function placeGuess(lat, lng) {
@@ -188,7 +211,7 @@ function confirmGuess() {
   `;
   correctMarker.bindPopup(popupHtml).openPopup();
 
-  // Fit so both markers are visible
+  // Fit so both markers are visible (respects Zurich bounds)
   const bounds = L.latLngBounds([userGuess.lat, userGuess.lng], [correct.lat, correct.lng]);
   map.fitBounds(bounds.pad(0.25), { animate: true });
 
