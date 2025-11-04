@@ -57,37 +57,45 @@ const pulseIcon = L.divIcon({
 // Initialize map
 document.addEventListener("DOMContentLoaded", () => {
   const center = [47.3769, 8.5417];
+
+  // 🔒 Tight Zürich bounds (city only)
   const zurichBounds = L.latLngBounds(
-    [47.4200, 8.4800],
-    [47.3300, 8.6200]
+    [47.4200, 8.4800], // NW
+    [47.3300, 8.6200]  // SE
   );
 
   map = L.map("map", {
     zoomControl: true,
     minZoom: 13,
     maxZoom: 19,
-    maxBounds: zurichBounds,
-    maxBoundsViscosity: 1.0,
+    maxBounds: zurichBounds,       // lock to city
+    maxBoundsViscosity: 1.0,       // no elastic dragging
     zoomAnimation: true,
     markerZoomAnimation: true,
-    fadeAnimation: true
+    fadeAnimation: true,
+    preferCanvas: true,            // perf
+    updateWhenZooming: false,
+    updateWhenIdle: true
   }).setView(center, 14);
 
+  // ✅ FAST Carto Light basemap (no key, CDN-backed)
   L.tileLayer(
-    "https://api.maptiler.com/maps/bright/{z}/{x}/{y}.png?key=0m0ly2WMir4T3fpwYwHi",
+    "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
     {
-      tileSize: 512,
-      zoomOffset: -1,
-      noWrap: true,
-      bounds: zurichBounds,
       maxZoom: 19,
-      attribution: '&copy; OSM | © MapTiler'
+      minZoom: 13,
+      noWrap: true, // don't repeat world
+      attribution: "&copy; OpenStreetMap contributors &copy; Carto"
     }
-  ).addTo(map);
+  )
+  .on("tileerror", () => console.warn("Tile load failed — will retry automatically"))
+  .addTo(map);
 
-  map.on("resize", () => map.fitBounds(zurichBounds));
-  map.on("drag", () => map.panInsideBounds(zurichBounds));
+  // Keep users inside Zurich & always fill frame nicely
+  map.on("resize", () => map.fitBounds(zurichBounds.pad(0.02)));
+  map.on("drag", () => map.panInsideBounds(zurichBounds, { animate: false }));
 
+  // Place guess on click
   map.on("click", e => {
     if (!guessLocked) placeGuess(e.latlng.lat, e.latlng.lng);
   });
@@ -104,9 +112,11 @@ function resetView() {
 async function loadQuestions() {
   try {
     const res = await fetch("data/questions.json");
+    if (!res.ok) throw new Error("HTTP " + res.status);
     QUESTIONS = await res.json();
   } catch (err) {
-    console.error("Error loading questions");
+    console.error("Error loading questions:", err);
+    QUESTIONS = [];
   }
 }
 
@@ -163,9 +173,9 @@ function placeGuess(lat, lng) {
 }
 
 function clearGuessArtifacts() {
-  if (guessMarker) map.removeLayer(guessMarker);
-  if (correctMarker) map.removeLayer(correctMarker);
-  if (lineLayer) map.removeLayer(lineLayer);
+  if (guessMarker) { map.removeLayer(guessMarker); guessMarker = null; }
+  if (correctMarker) { map.removeLayer(correctMarker); correctMarker = null; }
+  if (lineLayer) { map.removeLayer(lineLayer); lineLayer = null; }
 }
 
 function confirmGuess() {
@@ -175,8 +185,9 @@ function confirmGuess() {
   const q = gameQuestions[currentIndex];
   const correctPos = [q.lat, q.lng];
 
+  // Correct marker: UZH icon + pulsing ring
   correctMarker = L.marker(correctPos, { icon: uzhIcon }).addTo(map);
-  L.marker(correctPos, { icon: pulseIcon }).addTo(map); // pulsing ring
+  L.marker(correctPos, { icon: pulseIcon }).addTo(map);
 
   const m = map.distance([userGuess.lat, userGuess.lng], correctPos);
   const km = m / 1000;
@@ -184,7 +195,6 @@ function confirmGuess() {
 
   const gained = awardPoints(m);
   points += gained;
-
   scoreIndicator.textContent = `Points: ${points}`;
 
   lineLayer = L.polyline([[userGuess.lat, userGuess.lng], correctPos], {
@@ -193,7 +203,8 @@ function confirmGuess() {
     opacity: 0.85
   }).addTo(map);
 
-  map.fitBounds([correctPos, [userGuess.lat, userGuess.lng]].map(e => e), {
+  // Auto-zoom to show both markers
+  map.fitBounds([correctPos, [userGuess.lat, userGuess.lng]], {
     padding: [80, 80],
     animate: true,
     duration: 0.8
@@ -235,7 +246,9 @@ async function loadLeaderboard() {
       fbOrderBy("distance", "asc")
     );
     const res = await fbGetDocs(q);
-    return res.docs.map(d => d.data());
+    const entries = [];
+    res.forEach(doc => entries.push(doc.data()));
+    return entries;
   } catch {
     return [];
   }
@@ -245,12 +258,15 @@ async function renderLeaderboard() {
   const data = await loadLeaderboard();
   leaderboardBody.innerHTML = "";
   data.forEach((e, i) => {
+    const name = e.name ? escapeHtml(e.name) : "";
+    const dist = typeof e.distance === "number" ? e.distance.toFixed(2) : "0.00";
+    const pts = typeof e.points === "number" ? e.points : 0;
     leaderboardBody.innerHTML += `
       <tr>
         <td>${i + 1}</td>
-        <td>${escapeHtml(e.name)}</td>
-        <td>${e.points}</td>
-        <td>${e.distance.toFixed(2)}</td>
+        <td>${name}</td>
+        <td>${pts}</td>
+        <td>${dist}</td>
       </tr>`;
   });
 }
@@ -260,7 +276,8 @@ btnSaveScore.addEventListener("click", async () => {
   if (!name) return alert("Enter valid name");
 
   await fbAddDoc(fbCollection(window.db, "leaderboard"), {
-    name, points,
+    name,
+    points,
     distance: parseFloat(totalDistanceKm.toFixed(2)),
     ts: Date.now()
   });
@@ -270,7 +287,7 @@ btnSaveScore.addEventListener("click", async () => {
 });
 
 function sanitizeName(s) {
-  s = s.trim();
+  s = (s || "").trim();
   if (!s) return null;
   const bad = ["fuck","shit","bitch","ass","dick","cock","cunt","nigger","fag","whore","slut","sex","arse"];
   const lower = s.toLowerCase();
@@ -279,7 +296,7 @@ function sanitizeName(s) {
 }
 
 function escapeHtml(s) {
-  return s.replace(/[&<>"]/g, m =>
+  return String(s).replace(/[&<>"]/g, m =>
     ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[m])
   );
 }
