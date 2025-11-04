@@ -205,6 +205,36 @@ body {
   color: var(--accent-2);
 }
 
+.pulse-marker {
+  width: 20px;
+  height: 20px;
+  position: relative;
+}
+
+.pulse-dot {
+  width: 10px;
+  height: 10px;
+  background: #60d394;
+  border-radius: 50%;
+  position: absolute;
+  left: 5px;
+  top: 5px;
+}
+
+.pulse-ring {
+  width: 20px;
+  height: 20px;
+  border: 3px solid #60d394;
+  border-radius: 50%;
+  animation: pulse 1.4s infinite;
+}
+
+@keyframes pulse {
+  0% { transform: scale(0.4); opacity: 0.8; }
+  100% { transform: scale(1.8); opacity: 0; }
+}
+
+
 /* Smaller markers on mobile screens */
 @media (max-width: 640px) {
   .photo-wrap img {

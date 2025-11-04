@@ -1,13 +1,13 @@
 // UZH Map Guessr – Interactive Leaflet Edition with Points & Distance
-const TOTAL_QUESTIONS = 10; // rounds per game
-const MIN_SCORE_TO_SUBMIT = 300; // gate for leaderboard entry (tweak as you like)
+const TOTAL_QUESTIONS = 10;
+const MIN_SCORE_TO_SUBMIT = 300;
 
 // State
 let currentIndex = 0;
 let points = 0;
-let userGuess = null; // { lat, lng }
+let userGuess = null;
 let guessLocked = false;
-let QUESTIONS = []; // loaded from JSON (now has lat/lng)
+let QUESTIONS = [];
 let gameQuestions = [];
 let totalDistanceKm = 0;
 
@@ -30,85 +30,88 @@ const leaderboardBody = document.getElementById("leaderboard-body");
 const btnConfirmGuess = document.getElementById("btn-confirm-guess");
 const btnClearGuess = document.getElementById("btn-clear-guess");
 
-// Firebase helpers from window (already assigned in index.html)
+// Firebase helpers
 const fbAddDoc = window.fbAddDoc;
 const fbGetDocs = window.fbGetDocs;
 const fbCollection = window.fbCollection;
 const fbQuery = window.fbQuery;
 const fbOrderBy = window.fbOrderBy;
 
-// Leaflet Map
+// Leaflet map + overlays
 let map, guessMarker, correctMarker, lineLayer;
 
-// Initialize Leaflet map once DOM is ready
-document.addEventListener("DOMContentLoaded", () => {
-  // Center on central Zürich, zoomed to campuses
-  map = L.map('map', {
-    zoomControl: true,
-    attributionControl: true,
-    maxZoom: 19,
-    minZoom: 13,              // 🔒 don't allow zooming too far out
-    zoomAnimation: true,
-    fadeAnimation: true,
-    markerZoomAnimation: true
-  }).setView([47.3769, 8.5417], 14);
+// Custom Marker Icons ------------------------
+const uzhIcon = L.icon({
+  iconUrl: "images/icons/uzh-marker.svg",
+  iconSize: [34, 34],
+  iconAnchor: [17, 34]
+});
 
-  // Fast tiles (MapTiler Bright) – your key
+const pulseIcon = L.divIcon({
+  className: "pulse-marker",
+  html: '<div class="pulse-ring"></div><div class="pulse-dot"></div>',
+  iconSize: [20, 20],
+  iconAnchor: [10, 10]
+});
+
+// Initialize map
+document.addEventListener("DOMContentLoaded", () => {
+  const center = [47.3769, 8.5417];
+  const zurichBounds = L.latLngBounds(
+    [47.4200, 8.4800],
+    [47.3300, 8.6200]
+  );
+
+  map = L.map("map", {
+    zoomControl: true,
+    minZoom: 13,
+    maxZoom: 19,
+    maxBounds: zurichBounds,
+    maxBoundsViscosity: 1.0,
+    zoomAnimation: true,
+    markerZoomAnimation: true,
+    fadeAnimation: true
+  }).setView(center, 14);
+
   L.tileLayer(
-    'https://api.maptiler.com/maps/bright/{z}/{x}/{y}.png?key=0m0ly2WMir4T3fpwYwHi',
+    "https://api.maptiler.com/maps/bright/{z}/{x}/{y}.png?key=0m0ly2WMir4T3fpwYwHi",
     {
       tileSize: 512,
       zoomOffset: -1,
+      noWrap: true,
+      bounds: zurichBounds,
       maxZoom: 19,
-      attribution:
-        '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> contributors | MapTiler'
+      attribution: '&copy; OSM | © MapTiler'
     }
   ).addTo(map);
 
-  // 🔒 Lock movement to Zurich area only (bounds + gentle padding)
-  const zurichBounds = L.latLngBounds(
-    [47.41, 8.50], // NW limit
-    [47.35, 8.60]  // SE limit
-  );
-  map.setMaxBounds(zurichBounds.pad(0.08));
-  map.on('drag', () => {
-    map.panInsideBounds(zurichBounds, { animate: false });
+  map.on("resize", () => map.fitBounds(zurichBounds));
+  map.on("drag", () => map.panInsideBounds(zurichBounds));
+
+  map.on("click", e => {
+    if (!guessLocked) placeGuess(e.latlng.lat, e.latlng.lng);
   });
 
-  // Auto-center to overview on initial load
-  map.whenReady(() => resetView());
-
-  // Place guess on click
-  map.on('click', (e) => {
-    if (guessLocked) return; // do not allow changing after confirming
-    placeGuess(e.latlng.lat, e.latlng.lng);
-  });
-
-  renderLeaderboard(); // show initial leaderboard on load
+  renderLeaderboard();
+  resetView();
 });
 
-// Helper: reset view to Zurich overview
 function resetView() {
-  map.flyTo([47.3769, 8.5417], 14, {
-    animate: true,
-    duration: 0.8
-  });
+  map.flyTo([47.3769, 8.5417], 14, { animate: true, duration: 0.8 });
 }
 
-// Questions
+// Load Questions
 async function loadQuestions() {
   try {
     const res = await fetch("data/questions.json");
-    if (!res.ok) throw new Error("HTTP " + res.status);
     QUESTIONS = await res.json();
   } catch (err) {
-    console.error("Failed to load questions:", err);
-    QUESTIONS = [];
+    console.error("Error loading questions");
   }
 }
 
 function shuffleArray(array) {
-  return array.sort(() => Math.random() - 0.5);
+  return [...array].sort(() => Math.random() - 0.5);
 }
 
 function setScreen(target) {
@@ -116,18 +119,15 @@ function setScreen(target) {
   target.classList.add("active");
 }
 
-// Start game
 async function startGame() {
   if (QUESTIONS.length === 0) await loadQuestions();
 
-  const pool = [...QUESTIONS];
-  shuffleArray(pool);
-  gameQuestions = pool.slice(0, Math.min(TOTAL_QUESTIONS, pool.length));
+  gameQuestions = shuffleArray(QUESTIONS).slice(0, TOTAL_QUESTIONS);
 
   currentIndex = 0;
   points = 0;
   totalDistanceKm = 0;
-  scoreIndicator.textContent = `Points: ${points}`;
+  scoreIndicator.textContent = "Points: 0";
   playerNameInput.value = "";
   nameEntry.style.display = "none";
 
@@ -138,41 +138,34 @@ async function startGame() {
 
 function renderRound() {
   const q = gameQuestions[currentIndex];
-  userGuess = null;
   guessLocked = false;
+  userGuess = null;
 
-  // UI
+  clearGuessArtifacts();
+
   questionText.textContent = `Where is: ${q.answer}?`;
   roundIndicator.textContent = `Round ${currentIndex + 1}/${gameQuestions.length}`;
   btnNext.disabled = true;
   btnConfirmGuess.disabled = true;
   btnClearGuess.disabled = true;
-
   questionImage.src = q.image;
 
-  // Clear previous round markers/lines
-  clearGuessArtifacts();
-
-  // Recenter to overview each round
   resetView();
 }
 
 function placeGuess(lat, lng) {
   userGuess = { lat, lng };
-
   if (guessMarker) map.removeLayer(guessMarker);
-  guessMarker = L.marker([lat, lng], {
-    title: "Your guess"
-  }).addTo(map);
 
+  guessMarker = L.marker([lat, lng]).addTo(map);
   btnConfirmGuess.disabled = false;
   btnClearGuess.disabled = false;
 }
 
 function clearGuessArtifacts() {
-  if (guessMarker) { map.removeLayer(guessMarker); guessMarker = null; }
-  if (correctMarker) { map.removeLayer(correctMarker); correctMarker = null; }
-  if (lineLayer) { map.removeLayer(lineLayer); lineLayer = null; }
+  if (guessMarker) map.removeLayer(guessMarker);
+  if (correctMarker) map.removeLayer(correctMarker);
+  if (lineLayer) map.removeLayer(lineLayer);
 }
 
 function confirmGuess() {
@@ -180,80 +173,60 @@ function confirmGuess() {
   guessLocked = true;
 
   const q = gameQuestions[currentIndex];
-  const correct = { lat: q.lat, lng: q.lng };
+  const correctPos = [q.lat, q.lng];
 
-  // Correct marker
-  correctMarker = L.marker([correct.lat, correct.lng], {
-    title: "Correct location"
-  }).addTo(map);
+  correctMarker = L.marker(correctPos, { icon: uzhIcon }).addTo(map);
+  L.marker(correctPos, { icon: pulseIcon }).addTo(map); // pulsing ring
 
-  // Line between guess and correct
-  lineLayer = L.polyline([[userGuess.lat, userGuess.lng], [correct.lat, correct.lng]], {
-    color: '#8aa1ff',
-    weight: 3,
-    opacity: 0.9,
-  }).addTo(map);
-
-  // Distance (meters -> km)
-  const meters = map.distance([userGuess.lat, userGuess.lng], [correct.lat, correct.lng]);
-  const km = meters / 1000;
+  const m = map.distance([userGuess.lat, userGuess.lng], correctPos);
+  const km = m / 1000;
   totalDistanceKm += km;
 
-  // Distance-based points
-  const gained = awardPoints(meters);
+  const gained = awardPoints(m);
   points += gained;
+
   scoreIndicator.textContent = `Points: ${points}`;
 
-  // Small popup feedback
-  const popupHtml = `
-    <div style="font-weight:600;">${gained > 0 ? '✅ Nice!' : '❌'} ${gained} pts</div>
-    <div>Distance: ${km.toFixed(2)} km</div>
-  `;
-  correctMarker.bindPopup(popupHtml).openPopup();
+  lineLayer = L.polyline([[userGuess.lat, userGuess.lng], correctPos], {
+    color: "#8aa1ff",
+    weight: 3,
+    opacity: 0.85
+  }).addTo(map);
 
-  // Fit so both markers are visible (respects Zurich bounds)
-  const bounds = L.latLngBounds([userGuess.lat, userGuess.lng], [correct.lat, correct.lng]);
-  map.fitBounds(bounds.pad(0.25), { animate: true });
+  map.fitBounds([correctPos, [userGuess.lat, userGuess.lng]].map(e => e), {
+    padding: [80, 80],
+    animate: true,
+    duration: 0.8
+  });
 
   btnNext.disabled = false;
   btnConfirmGuess.disabled = true;
 }
 
-// Points tiers (tweak freely)
-function awardPoints(meters) {
-  if (meters <= 100) return 100;
-  if (meters <= 250) return 70;
-  if (meters <= 500) return 40;
-  if (meters <= 1000) return 10;
+function awardPoints(m) {
+  if (m <= 100) return 100;
+  if (m <= 250) return 70;
+  if (m <= 500) return 40;
+  if (m <= 1000) return 10;
   return 0;
 }
 
-// Next / Finish
 btnNext.addEventListener("click", () => {
   if (currentIndex < gameQuestions.length - 1) {
     currentIndex++;
     renderRound();
-  } else {
-    finish();
-  }
+  } else finish();
 });
 
 function finish() {
-  resultSummary.textContent = `You scored ${points} points over ${gameQuestions.length} rounds. Total distance: ${totalDistanceKm.toFixed(2)} km.`;
+  resultSummary.textContent =
+    `You scored ${points} points! Distance: ${totalDistanceKm.toFixed(2)} km`;
+  renderLeaderboard();
   setScreen(screenResult);
 
-  // Show / render leaderboard
-  renderLeaderboard();
-
-  // Show name entry if points reach threshold
-  if (points >= MIN_SCORE_TO_SUBMIT) {
-    nameEntry.style.display = "block";
-  } else {
-    nameEntry.style.display = "none";
-  }
+  if (points >= MIN_SCORE_TO_SUBMIT) nameEntry.style.display = "block";
 }
 
-// Leaderboard (Firestore)
 async function loadLeaderboard() {
   try {
     const q = fbQuery(
@@ -261,118 +234,65 @@ async function loadLeaderboard() {
       fbOrderBy("points", "desc"),
       fbOrderBy("distance", "asc")
     );
-    const snap = await fbGetDocs(q);
-    const entries = [];
-    snap.forEach(doc => entries.push(doc.data()));
-    return entries;
-  } catch (err) {
-    console.error("Failed to load leaderboard:", err);
+    const res = await fbGetDocs(q);
+    return res.docs.map(d => d.data());
+  } catch {
     return [];
-  }
-}
-
-async function saveToLeaderboard(entry) {
-  try {
-    await fbAddDoc(fbCollection(window.db, "leaderboard"), entry);
-    showMessage("✅ Saved to global leaderboard", "var(--accent)");
-  } catch (err) {
-    console.error("Error saving to leaderboard:", err);
-    showMessage("⚠️ Failed to save score", "var(--danger)");
   }
 }
 
 async function renderLeaderboard() {
   const data = await loadLeaderboard();
   leaderboardBody.innerHTML = "";
-  data.forEach((entry, i) => {
-    const row = document.createElement("tr");
-    row.innerHTML = `
-      <td style="padding:0.4rem 0.3rem;">${i + 1}</td>
-      <td style="padding:0.4rem 0.3rem;">${escapeHtml(entry.name ?? '')}</td>
-      <td style="padding:0.4rem 0.3rem;">${entry.points ?? 0}</td>
-      <td style="padding:0.4rem 0.3rem;">${(entry.distance ?? 0).toFixed(2)}</td>
-    `;
-    leaderboardBody.appendChild(row);
+  data.forEach((e, i) => {
+    leaderboardBody.innerHTML += `
+      <tr>
+        <td>${i + 1}</td>
+        <td>${escapeHtml(e.name)}</td>
+        <td>${e.points}</td>
+        <td>${e.distance.toFixed(2)}</td>
+      </tr>`;
   });
 }
 
-// Name sanitization (same idea as before)
-function sanitizeName(name) {
-  if (!name) return null;
-  let clean = name.trim();
-  clean = clean.replace(/[^\p{L}\p{N} \-_'"]/gu, "");
-  if (clean.length < 1) return null;
-  const badWords = ["fuck","shit","bitch","ass","dick","cock","cunt","nigger","fag","whore","slut","sex","arse"];
-  const lowered = clean.toLowerCase();
-  for (const bad of badWords) {
-    if (lowered.includes(bad)) return null;
-  }
-  return clean.slice(0, 20);
-}
-
-function escapeHtml(s) {
-  return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-}
-
-// Save score
 btnSaveScore.addEventListener("click", async () => {
-  const raw = playerNameInput.value;
-  const clean = sanitizeName(raw);
-  if (!clean) {
-    alert("Please enter a valid, non-offensive name (1–20 characters).");
-    return;
-  }
-  if (points < MIN_SCORE_TO_SUBMIT) {
-    alert(`You need at least ${MIN_SCORE_TO_SUBMIT} points to join the leaderboard.`);
-    return;
-  }
+  const name = sanitizeName(playerNameInput.value);
+  if (!name) return alert("Enter valid name");
 
-  const entry = {
-    name: clean,
-    points,
-    distance: parseFloat(totalDistanceKm.toFixed(3)),
+  await fbAddDoc(fbCollection(window.db, "leaderboard"), {
+    name, points,
+    distance: parseFloat(totalDistanceKm.toFixed(2)),
     ts: Date.now()
-  };
+  });
 
-  await saveToLeaderboard(entry);
-  playerNameInput.value = "";
   nameEntry.style.display = "none";
   renderLeaderboard();
 });
 
-// UI helpers
-function showMessage(text, bg) {
-  const msg = document.createElement("div");
-  msg.textContent = text;
-  msg.style.position = "fixed";
-  msg.style.left = "50%";
-  msg.style.bottom = "24px";
-  msg.style.transform = "translateX(-50%)";
-  msg.style.background = bg || "rgba(255,255,255,0.95)";
-  msg.style.color = "#000";
-  msg.style.padding = "0.5rem 0.9rem";
-  msg.style.borderRadius = "10px";
-  msg.style.fontWeight = "600";
-  msg.style.boxShadow = "0 10px 30px rgba(0,0,0,0.25)";
-  msg.style.zIndex = "9999";
-  document.body.appendChild(msg);
-  setTimeout(() => msg.remove(), 1400);
+function sanitizeName(s) {
+  s = s.trim();
+  if (!s) return null;
+  const bad = ["fuck","shit","bitch","ass","dick","cock","cunt","nigger","fag","whore","slut","sex","arse"];
+  const lower = s.toLowerCase();
+  if (bad.some(w => lower.includes(w))) return null;
+  return s.slice(0, 20);
 }
 
-// Buttons
+function escapeHtml(s) {
+  return s.replace(/[&<>"]/g, m =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[m])
+  );
+}
+
 btnClearGuess.addEventListener("click", () => {
-  if (guessLocked) return;
-  userGuess = null;
-  if (guessMarker) { map.removeLayer(guessMarker); guessMarker = null; }
-  btnConfirmGuess.disabled = true;
-  btnClearGuess.disabled = true;
+  if (!guessLocked) {
+    if (guessMarker) map.removeLayer(guessMarker);
+    userGuess = null;
+    btnConfirmGuess.disabled = true;
+    btnClearGuess.disabled = true;
+  }
 });
 
 btnConfirmGuess.addEventListener("click", confirmGuess);
-
-btnRestart.addEventListener("click", () => setScreen(screenStart));
 btnStart.addEventListener("click", startGame);
-
-// ----------------------------------------------------------------------------
-// NOTE: The old pixel/% static-map code is removed. We now rely on Leaflet.
-// ----------------------------------------------------------------------------
+btnRestart.addEventListener("click", () => setScreen(screenStart));
