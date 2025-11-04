@@ -1,4 +1,4 @@
-// ✅ UZH Map Guessr  –  Fast + Fixed Carto Map
+// UZH Map Guessr – Interactive Leaflet Edition with Points & Distance
 const TOTAL_QUESTIONS = 10;
 const MIN_SCORE_TO_SUBMIT = 300;
 
@@ -11,7 +11,7 @@ let QUESTIONS = [];
 let gameQuestions = [];
 let totalDistanceKm = 0;
 
-// UI Elements
+// Elements
 const screenStart = document.getElementById("screen-start");
 const screenGame = document.getElementById("screen-game");
 const screenResult = document.getElementById("screen-result");
@@ -30,78 +30,89 @@ const leaderboardBody = document.getElementById("leaderboard-body");
 const btnConfirmGuess = document.getElementById("btn-confirm-guess");
 const btnClearGuess = document.getElementById("btn-clear-guess");
 
-// Firebase
+// Firebase helpers
 const fbAddDoc = window.fbAddDoc;
 const fbGetDocs = window.fbGetDocs;
 const fbCollection = window.fbCollection;
 const fbQuery = window.fbQuery;
 const fbOrderBy = window.fbOrderBy;
 
-// Leaflet Objects
+// Leaflet map + overlays
 let map, guessMarker, correctMarker, lineLayer;
 
-// ✅ Custom Pulsing icons
+// Custom Marker Icons ------------------------
 const uzhIcon = L.icon({
   iconUrl: "images/icons/uzh-marker.svg",
-  iconSize: [36, 36],
-  iconAnchor: [18, 36]
+  iconSize: [34, 34],
+  iconAnchor: [17, 34]
 });
 
 const pulseIcon = L.divIcon({
   className: "pulse-marker",
   html: '<div class="pulse-ring"></div><div class="pulse-dot"></div>',
-  iconSize: [24, 24],
-  iconAnchor: [12, 12]
+  iconSize: [20, 20],
+  iconAnchor: [10, 10]
 });
 
-// ✅ Initialize fast & reliable Zürich map
+// Initialize map
 document.addEventListener("DOMContentLoaded", () => {
-  const zurichCenter = [47.3788, 8.5481];
+  const center = [47.3769, 8.5417];
 
+  // 🔒 Tight Zürich bounds (city only)
   const zurichBounds = L.latLngBounds(
-    [47.430, 8.450], // expanded NW
-    [47.310, 8.650]  // expanded SE
+    [47.4200, 8.4800], // NW
+    [47.3300, 8.6200]  // SE
   );
 
   map = L.map("map", {
-    center: zurichCenter,
-    zoom: 13,
-    minZoom: 12,
-    maxZoom: 19,
     zoomControl: true,
-    maxBounds: zurichBounds,
-    maxBoundsViscosity: 1.0,
-    preferCanvas: true
-  });
+    minZoom: 13,
+    maxZoom: 19,
+    maxBounds: zurichBounds,       // lock to city
+    maxBoundsViscosity: 1.0,       // no elastic dragging
+    zoomAnimation: true,
+    markerZoomAnimation: true,
+    fadeAnimation: true,
+    preferCanvas: true,            // perf
+    updateWhenZooming: false,
+    updateWhenIdle: true
+  }).setView(center, 14);
 
-  // ✅ FAST - Carto Voyager tiles (full city coverage)
+  // ✅ FAST Carto Light basemap (no key, CDN-backed)
   L.tileLayer(
-    "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
+    "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
     {
-      subdomains: "abcd",
-      noWrap: true,
       maxZoom: 19,
-      minZoom: 12,
+      minZoom: 13,
+      noWrap: true, // don't repeat world
       attribution: "&copy; OpenStreetMap contributors &copy; Carto"
     }
   )
-  .on("tileerror", () => console.warn("Tile load error (auto-retrying)..."))
+  .on("tileerror", () => console.warn("Tile load failed — will retry automatically"))
   .addTo(map);
 
-  // ✅ Force tiles always fill frame
+  // Keep users inside Zurich & always fill frame nicely
+  map.on("resize", () => map.fitBounds(zurichBounds.pad(0.02)));
   map.on("drag", () => map.panInsideBounds(zurichBounds, { animate: false }));
 
+  // Place guess on click
   map.on("click", e => {
     if (!guessLocked) placeGuess(e.latlng.lat, e.latlng.lng);
   });
 
   renderLeaderboard();
+  resetView();
 });
 
-// ✅ Load questions
+function resetView() {
+  map.flyTo([47.3769, 8.5417], 14, { animate: true, duration: 0.8 });
+}
+
+// Load Questions
 async function loadQuestions() {
   try {
     const res = await fetch("data/questions.json");
+    if (!res.ok) throw new Error("HTTP " + res.status);
     QUESTIONS = await res.json();
   } catch (err) {
     console.error("Error loading questions:", err);
@@ -109,31 +120,32 @@ async function loadQuestions() {
   }
 }
 
-function shuffleArray(a) {
-  return [...a].sort(() => Math.random() - 0.5);
+function shuffleArray(array) {
+  return [...array].sort(() => Math.random() - 0.5);
 }
 
-function setScreen(s) {
-  [screenStart, screenGame, screenResult].forEach(el => el.classList.remove("active"));
-  s.classList.add("active");
+function setScreen(target) {
+  [screenStart, screenGame, screenResult].forEach(s => s.classList.remove("active"));
+  target.classList.add("active");
 }
 
-// ✅ Start Game
 async function startGame() {
-  if (!QUESTIONS.length) await loadQuestions();
+  if (QUESTIONS.length === 0) await loadQuestions();
 
   gameQuestions = shuffleArray(QUESTIONS).slice(0, TOTAL_QUESTIONS);
+
   currentIndex = 0;
   points = 0;
   totalDistanceKm = 0;
   scoreIndicator.textContent = "Points: 0";
+  playerNameInput.value = "";
+  nameEntry.style.display = "none";
 
   clearGuessArtifacts();
   setScreen(screenGame);
   renderRound();
 }
 
-// ✅ Render a question
 function renderRound() {
   const q = gameQuestions[currentIndex];
   guessLocked = false;
@@ -143,32 +155,29 @@ function renderRound() {
 
   questionText.textContent = `Where is: ${q.answer}?`;
   roundIndicator.textContent = `Round ${currentIndex + 1}/${gameQuestions.length}`;
-  questionImage.src = q.image;
-
   btnNext.disabled = true;
   btnConfirmGuess.disabled = true;
   btnClearGuess.disabled = true;
+  questionImage.src = q.image;
 
-  map.flyTo([47.3788, 8.5481], 13, { duration: 0.6 });
+  resetView();
 }
 
-// ✅ Place Guess
 function placeGuess(lat, lng) {
   userGuess = { lat, lng };
   if (guessMarker) map.removeLayer(guessMarker);
+
   guessMarker = L.marker([lat, lng]).addTo(map);
   btnConfirmGuess.disabled = false;
   btnClearGuess.disabled = false;
 }
 
-// ✅ Clear map
 function clearGuessArtifacts() {
-  [guessMarker, correctMarker, lineLayer].forEach(l => {
-    if (l) map.removeLayer(l);
-  });
+  if (guessMarker) { map.removeLayer(guessMarker); guessMarker = null; }
+  if (correctMarker) { map.removeLayer(correctMarker); correctMarker = null; }
+  if (lineLayer) { map.removeLayer(lineLayer); lineLayer = null; }
 }
 
-// ✅ Confirm Answer
 function confirmGuess() {
   if (!userGuess) return;
   guessLocked = true;
@@ -176,25 +185,29 @@ function confirmGuess() {
   const q = gameQuestions[currentIndex];
   const correctPos = [q.lat, q.lng];
 
+  // Correct marker: UZH icon + pulsing ring
   correctMarker = L.marker(correctPos, { icon: uzhIcon }).addTo(map);
   L.marker(correctPos, { icon: pulseIcon }).addTo(map);
 
-  const meters = map.distance([userGuess.lat, userGuess.lng], correctPos);
-  totalDistanceKm += meters / 1000;
+  const m = map.distance([userGuess.lat, userGuess.lng], correctPos);
+  const km = m / 1000;
+  totalDistanceKm += km;
 
-  const gained = awardPoints(meters);
+  const gained = awardPoints(m);
   points += gained;
   scoreIndicator.textContent = `Points: ${points}`;
 
-  lineLayer = L.polyline([correctPos, [userGuess.lat, userGuess.lng]], {
+  lineLayer = L.polyline([[userGuess.lat, userGuess.lng], correctPos], {
     color: "#8aa1ff",
     weight: 3,
     opacity: 0.85
   }).addTo(map);
 
+  // Auto-zoom to show both markers
   map.fitBounds([correctPos, [userGuess.lat, userGuess.lng]], {
     padding: [80, 80],
-    animate: true
+    animate: true,
+    duration: 0.8
   });
 
   btnNext.disabled = false;
@@ -209,20 +222,22 @@ function awardPoints(m) {
   return 0;
 }
 
-// ✅ Next / Finish
 btnNext.addEventListener("click", () => {
-  currentIndex < gameQuestions.length - 1 ? (currentIndex++, renderRound()) : finish();
+  if (currentIndex < gameQuestions.length - 1) {
+    currentIndex++;
+    renderRound();
+  } else finish();
 });
 
 function finish() {
   resultSummary.textContent =
-    `You scored ${points} points 🎯 Total distance: ${totalDistanceKm.toFixed(2)} km`;
+    `You scored ${points} points! Distance: ${totalDistanceKm.toFixed(2)} km`;
   renderLeaderboard();
   setScreen(screenResult);
-  nameEntry.style.display = points >= MIN_SCORE_TO_SUBMIT ? "block" : "none";
+
+  if (points >= MIN_SCORE_TO_SUBMIT) nameEntry.style.display = "block";
 }
 
-// ✅ Leaderboard
 async function loadLeaderboard() {
   try {
     const q = fbQuery(
@@ -230,8 +245,10 @@ async function loadLeaderboard() {
       fbOrderBy("points", "desc"),
       fbOrderBy("distance", "asc")
     );
-    const snap = await fbGetDocs(q);
-    return snap.docs.map(d => d.data());
+    const res = await fbGetDocs(q);
+    const entries = [];
+    res.forEach(doc => entries.push(doc.data()));
+    return entries;
   } catch {
     return [];
   }
@@ -239,14 +256,19 @@ async function loadLeaderboard() {
 
 async function renderLeaderboard() {
   const data = await loadLeaderboard();
-  leaderboardBody.innerHTML = data.map((e, i) => `
-    <tr>
-      <td>${i + 1}</td>
-      <td>${escapeHtml(e.name)}</td>
-      <td>${e.points}</td>
-      <td>${e.distance.toFixed(2)}</td>
-    </tr>
-  `).join("");
+  leaderboardBody.innerHTML = "";
+  data.forEach((e, i) => {
+    const name = e.name ? escapeHtml(e.name) : "";
+    const dist = typeof e.distance === "number" ? e.distance.toFixed(2) : "0.00";
+    const pts = typeof e.points === "number" ? e.points : 0;
+    leaderboardBody.innerHTML += `
+      <tr>
+        <td>${i + 1}</td>
+        <td>${name}</td>
+        <td>${pts}</td>
+        <td>${dist}</td>
+      </tr>`;
+  });
 }
 
 btnSaveScore.addEventListener("click", async () => {
@@ -265,19 +287,20 @@ btnSaveScore.addEventListener("click", async () => {
 });
 
 function sanitizeName(s) {
+  s = (s || "").trim();
+  if (!s) return null;
   const bad = ["fuck","shit","bitch","ass","dick","cock","cunt","nigger","fag","whore","slut","sex","arse"];
-  s = (s || "").trim().slice(0, 20);
-  if (!s || bad.some(w => s.toLowerCase().includes(w))) return null;
-  return s;
+  const lower = s.toLowerCase();
+  if (bad.some(w => lower.includes(w))) return null;
+  return s.slice(0, 20);
 }
 
 function escapeHtml(s) {
-  return String(s).replace(/[&<>"]/g, c =>
-    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])
+  return String(s).replace(/[&<>"]/g, m =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[m])
   );
 }
 
-// ✅ Buttons
 btnClearGuess.addEventListener("click", () => {
   if (!guessLocked) {
     if (guessMarker) map.removeLayer(guessMarker);
