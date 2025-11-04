@@ -1,17 +1,15 @@
-// UZH Map Guessr with Leaderboard
-const TOTAL_QUESTIONS = 10; // Number of questions per game
+// UZH Map Guessr – Interactive Leaflet Edition with Points & Distance
+const TOTAL_QUESTIONS = 10; // rounds per game
+const MIN_SCORE_TO_SUBMIT = 300; // gate for leaderboard entry (tweak as you like)
 
 // State
 let currentIndex = 0;
-let score = 0;
-let userGuess = null;
+let points = 0;
+let userGuess = null; // { lat, lng }
 let guessLocked = false;
-let QUESTIONS = []; // loaded from JSON
-let gameQuestions = []; // the 5 random questions for current game
-let totalDistanceKm = 0; // accumulated distance for current game
-
-// Leaderboard storage key
-const LEADERBOARD_KEY = "uzh_map_leaderboard_v1";
+let QUESTIONS = []; // loaded from JSON (now has lat/lng)
+let gameQuestions = [];
+let totalDistanceKm = 0;
 
 // Elements
 const screenStart = document.getElementById("screen-start");
@@ -24,42 +22,51 @@ const questionText = document.getElementById("question-text");
 const roundIndicator = document.getElementById("round-indicator");
 const scoreIndicator = document.getElementById("score-indicator");
 const resultSummary = document.getElementById("result-summary");
-const campusMap = document.getElementById("campus-map");
-const marker = document.getElementById("marker");
-const correctMarker = document.getElementById("correct-marker");
 const questionImage = document.getElementById("question-image");
 const nameEntry = document.getElementById("name-entry");
 const playerNameInput = document.getElementById("player-name");
 const btnSaveScore = document.getElementById("btn-save-score");
 const leaderboardBody = document.getElementById("leaderboard-body");
+const btnConfirmGuess = document.getElementById("btn-confirm-guess");
+const btnClearGuess = document.getElementById("btn-clear-guess");
 
-// Style markers
-Object.assign(marker.style, {
-  position: "absolute",
-  width: "20px",
-  height: "20px",
-  background: "var(--danger)",
-  borderRadius: "50%",
-  transform: "translate(-50%, -50%)",
-  pointerEvents: "none",
-  display: "none",
-  boxShadow: "0 0 12px rgba(255,0,0,0.5)",
-  zIndex: 15
-});
-Object.assign(correctMarker.style, {
-  position: "absolute",
-  width: "20px",
-  height: "20px",
-  background: "var(--success)",
-  borderRadius: "50%",
-  transform: "translate(-50%, -50%)",
-  pointerEvents: "none",
-  display: "none",
-  boxShadow: "0 0 12px rgba(0,255,0,0.4)",
-  zIndex: 14
+// Firebase helpers from window (already assigned in index.html)
+const fbAddDoc = window.fbAddDoc;
+const fbGetDocs = window.fbGetDocs;
+const fbCollection = window.fbCollection;
+const fbQuery = window.fbQuery;
+const fbOrderBy = window.fbOrderBy;
+
+// Leaflet Map
+let map, guessMarker, correctMarker, lineLayer;
+
+// Initialize Leaflet map once DOM is ready
+document.addEventListener("DOMContentLoaded", () => {
+  // Center on central Zürich, zoomed to campuses
+  map = L.map('map', {
+    zoomControl: true,
+    attributionControl: true
+  }).setView([47.3769, 8.5417], 14);
+
+  // Free OSM tiles
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    minZoom: 12,
+    attribution: '&copy; OpenStreetMap contributors'
+  }).addTo(map);
+
+  // Blue-ish UI accents are handled via CSS (see app.css/theme tweaks)
+
+  // Place guess on click
+  map.on('click', (e) => {
+    if (guessLocked) return; // do not allow changing after confirming
+    placeGuess(e.latlng.lat, e.latlng.lng);
+  });
+
+  renderLeaderboard(); // show initial leaderboard on load
 });
 
-// Load questions from JSON
+// Questions
 async function loadQuestions() {
   try {
     const res = await fetch("data/questions.json");
@@ -67,17 +74,14 @@ async function loadQuestions() {
     QUESTIONS = await res.json();
   } catch (err) {
     console.error("Failed to load questions:", err);
-    QUESTIONS = []; // keep empty
+    QUESTIONS = [];
   }
 }
 
-// Helper: shuffle an array
 function shuffleArray(array) {
-  // Fisher-Yates would be better, but this is simple and fine here
   return array.sort(() => Math.random() - 0.5);
 }
 
-// Screen navigation
 function setScreen(target) {
   [screenStart, screenGame, screenResult].forEach(s => s.classList.remove("active"));
   target.classList.add("active");
@@ -87,173 +91,118 @@ function setScreen(target) {
 async function startGame() {
   if (QUESTIONS.length === 0) await loadQuestions();
 
-  // Pick random questions for this game (if not enough questions, use all)
   const pool = [...QUESTIONS];
   shuffleArray(pool);
   gameQuestions = pool.slice(0, Math.min(TOTAL_QUESTIONS, pool.length));
 
   currentIndex = 0;
-  score = 0;
+  points = 0;
   totalDistanceKm = 0;
-  scoreIndicator.textContent = `Score: ${score}`;
+  scoreIndicator.textContent = `Points: ${points}`;
   playerNameInput.value = "";
   nameEntry.style.display = "none";
 
+  clearGuessArtifacts();
   setScreen(screenGame);
   renderRound();
 }
 
-// Render a round
 function renderRound() {
   const q = gameQuestions[currentIndex];
   userGuess = null;
   guessLocked = false;
-  marker.style.display = "none";
-  correctMarker.style.display = "none";
 
+  // UI
   questionText.textContent = `Where is: ${q.answer}?`;
   roundIndicator.textContent = `Round ${currentIndex + 1}/${gameQuestions.length}`;
   btnNext.disabled = true;
+  btnConfirmGuess.disabled = true;
+  btnClearGuess.disabled = true;
 
   questionImage.src = q.image;
-  // campusMap image already set in HTML; ensure it is up-to-date if you want a different map
-  // campusMap.src = "images/uzh_map.jpeg";
+
+  // Clear previous round markers/lines
+  clearGuessArtifacts();
+
+  // Zoom the map so both Zentrum/Irchel areas feel comfortable
+  // (We keep a city-wide view; users can zoom freely)
+  // Optionally fit to campus bounds later if you want.
 }
 
-// compute draw params for campusMap (drawW/drawH and offsets)
-function computeDrawParams() {
-  const rect = campusMap.getBoundingClientRect();
-  const dispW = rect.width;
-  const dispH = rect.height;
-  const natW = campusMap.naturalWidth || 1;
-  const natH = campusMap.naturalHeight || 1;
+function placeGuess(lat, lng) {
+  userGuess = { lat, lng };
 
-  const style = window.getComputedStyle(campusMap);
-  const objectFit = style.getPropertyValue('object-fit') || 'fill';
+  if (guessMarker) map.removeLayer(guessMarker);
+  guessMarker = L.marker([lat, lng], {
+    title: "Your guess"
+  }).addTo(map);
 
-  let scale, drawW, drawH, offsetX, offsetY;
-  if (objectFit === 'cover') {
-    scale = Math.max(dispW / natW, dispH / natH);
-  } else {
-    scale = Math.min(dispW / natW, dispH / natH);
-  }
-  drawW = natW * scale;
-  drawH = natH * scale;
-  offsetX = (dispW - drawW) / 2;
-  offsetY = (dispH - drawH) / 2;
-
-  return { rect, dispW, dispH, natW, natH, drawW, drawH, offsetX, offsetY };
+  btnConfirmGuess.disabled = false;
+  btnClearGuess.disabled = false;
 }
 
-// Map click handler (robust)
-campusMap.addEventListener("click", (e) => {
-  if (guessLocked) return;
-
-  const { rect, dispW, dispH, drawW, drawH, offsetX, offsetY } = computeDrawParams();
-
-  // coordinates relative to the element top-left
-  const localX = e.clientX - rect.left;
-  const localY = e.clientY - rect.top;
-
-  // coordinates relative to the drawn image area
-  const clickX_onDrawn = localX - offsetX;
-  const clickY_onDrawn = localY - offsetY;
-
-  // ignore clicks outside the visible image area (letterbox)
-  if (clickX_onDrawn < 0 || clickX_onDrawn > drawW || clickY_onDrawn < 0 || clickY_onDrawn > drawH) {
-    // optional small feedback: flash a little message
-    showMessage("Click inside the map area", "rgba(255,255,255,0.9)");
-    return;
-  }
-
-  // convert to percentages relative to the drawn image
-  const xPct = (clickX_onDrawn / drawW) * 100;
-  const yPct = (clickY_onDrawn / drawH) * 100;
-
-  // Save guess
-  userGuess = { x: xPct, y: yPct };
-
-  // Compute marker positions relative to the container (so left/top % work)
-  // left% = (offsetX + xPct/100 * drawW) / dispW * 100
-  const leftPercent = ((offsetX + (xPct / 100) * drawW) / dispW) * 100;
-  const topPercent  = ((offsetY + (yPct / 100) * drawH) / dispH) * 100;
-
-  marker.style.left = `${leftPercent}%`;
-  marker.style.top  = `${topPercent}%`;
-  marker.style.display = "block";
-
-  // Lock and evaluate
-  checkAnswer(); // checkAnswer will use gameQuestions[currentIndex].x/.y (they are percentages relative to the intrinsic image)
-  guessLocked = true;
-});
-
-// Helper: convert percentage distance to kilometers
-function calculateDistanceKm(x1, y1, x2, y2) {
-  // Adjust these to reflect real campus extents if you want more accuracy.
-  const mapWidthKm = 13;  // width of the map in km (approx)
-  const mapHeightKm = 9;  // height of the map in km (approx)
-
-  const dxKm = ((x2 - x1) / 100) * mapWidthKm;
-  const dyKm = ((y2 - y1) / 100) * mapHeightKm;
-
-  return Math.sqrt(dxKm * dxKm + dyKm * dyKm);
+function clearGuessArtifacts() {
+  if (guessMarker) { map.removeLayer(guessMarker); guessMarker = null; }
+  if (correctMarker) { map.removeLayer(correctMarker); correctMarker = null; }
+  if (lineLayer) { map.removeLayer(lineLayer); lineLayer = null; }
 }
 
-// Check answer (updates score and totalDistanceKm)
-function checkAnswer() {
-  const q = gameQuestions[currentIndex];
+function confirmGuess() {
   if (!userGuess) return;
+  guessLocked = true;
 
-  const dx = q.x - userGuess.x;
-  const dy = q.y - userGuess.y;
-  const distancePercent = Math.sqrt(dx * dx + dy * dy);
+  const q = gameQuestions[currentIndex];
+  const correct = { lat: q.lat, lng: q.lng };
 
-  // Calculate distance in km and accumulate
-  const distanceKm = calculateDistanceKm(userGuess.x, userGuess.y, q.x, q.y);
-  totalDistanceKm += distanceKm;
+  // Correct marker
+  correctMarker = L.marker([correct.lat, correct.lng], {
+    title: "Correct location"
+  }).addTo(map);
 
-  // Place correct marker using same drawn-image computations
-  const { dispW, dispH, drawW, drawH, offsetX, offsetY } = computeDrawParams();
-  const correctLeftPercent = ((offsetX + (q.x / 100) * drawW) / dispW) * 100;
-  const correctTopPercent  = ((offsetY + (q.y / 100) * drawH) / dispH) * 100;
+  // Line between guess and correct
+  lineLayer = L.polyline([[userGuess.lat, userGuess.lng], [correct.lat, correct.lng]], {
+    color: '#8aa1ff',
+    weight: 3,
+    opacity: 0.9,
+  }).addTo(map);
 
-  correctMarker.style.left = `${correctLeftPercent}%`;
-  correctMarker.style.top  = `${correctTopPercent}%`;
-  correctMarker.style.display = "block";
+  // Distance (meters -> km)
+  const meters = map.distance([userGuess.lat, userGuess.lng], [correct.lat, correct.lng]);
+  const km = meters / 1000;
+  totalDistanceKm += km;
 
-  if (distancePercent < 5) {
-    score++;
-    scoreIndicator.textContent = `Score: ${score}`;
-    showMessage(`✅ Correct! Distance: ${distanceKm.toFixed(2)} km`, "var(--success)");
-  } else {
-    showMessage(`❌ Wrong! Distance: ${distanceKm.toFixed(2)} km`, "var(--danger)");
-  }
+  // Distance-based points
+  const gained = awardPoints(meters);
+  points += gained;
+  scoreIndicator.textContent = `Points: ${points}`;
+
+  // Small popup feedback
+  const popupHtml = `
+    <div style="font-weight:600;">${gained > 0 ? '✅ Nice!' : '❌'} ${gained} pts</div>
+    <div>Distance: ${km.toFixed(2)} km</div>
+  `;
+  correctMarker.bindPopup(popupHtml).openPopup();
+
+  // Fit so both markers are visible
+  const bounds = L.latLngBounds([userGuess.lat, userGuess.lng], [correct.lat, correct.lng]);
+  map.fitBounds(bounds.pad(0.25), { animate: true });
 
   btnNext.disabled = false;
+  btnConfirmGuess.disabled = true;
 }
 
-// Show message (temporary)
-function showMessage(text, color) {
-  const msg = document.createElement("div");
-  msg.textContent = text;
-  msg.style.position = "absolute";
-  msg.style.top = "10px";
-  msg.style.left = "50%";
-  msg.style.transform = "translateX(-50%)";
-  msg.style.background = color;
-  msg.style.color = "#000";
-  msg.style.padding = "0.4rem 0.8rem";
-  msg.style.borderRadius = "10px";
-  msg.style.fontWeight = "600";
-  msg.style.boxShadow = "0 0 12px rgba(0,0,0,0.4)";
-  msg.style.zIndex = "30";
-  campusMap.parentElement.appendChild(msg);
-  setTimeout(() => msg.remove(), 1200);
+// Points tiers (tweak freely)
+function awardPoints(meters) {
+  if (meters <= 100) return 100;
+  if (meters <= 250) return 70;
+  if (meters <= 500) return 40;
+  if (meters <= 1000) return 10;
+  return 0;
 }
 
-// Next question
+// Next / Finish
 btnNext.addEventListener("click", () => {
-  if (currentIndex < TOTAL_QUESTIONS - 1) {
+  if (currentIndex < gameQuestions.length - 1) {
     currentIndex++;
     renderRound();
   } else {
@@ -261,51 +210,29 @@ btnNext.addEventListener("click", () => {
   }
 });
 
-// Finish game (show results and leaderboard)
 function finish() {
-  resultSummary.textContent = `You scored ${score} out of ${gameQuestions.length}. Total distance: ${totalDistanceKm.toFixed(2)} km.`;
+  resultSummary.textContent = `You scored ${points} points over ${gameQuestions.length} rounds. Total distance: ${totalDistanceKm.toFixed(2)} km.`;
   setScreen(screenResult);
 
-  // Render leaderboard for display to everyone
+  // Show / render leaderboard
   renderLeaderboard();
 
-  // Show name entry only if player scored at least 5 correct
-  if (score >= 5) {
+  // Show name entry if points reach threshold
+  if (points >= MIN_SCORE_TO_SUBMIT) {
     nameEntry.style.display = "block";
   } else {
     nameEntry.style.display = "none";
   }
 }
 
-// Leaderboard helpers
-
-// sanitize input and block obviously offensive words (simple filter)
-function sanitizeName(name) {
-  if (!name) return null;
-  let clean = name.trim();
-  // Remove weird characters but keep letters, numbers, spaces and basic punctuation
-  clean = clean.replace(/[^\p{L}\p{N} \-_'"]/gu, "");
-  // Minimum length after trimming
-  if (clean.length < 1) return null;
-
-  // simple offensive words list (case-insensitive)
-  const badWords = [
-    "fuck","shit","bitch","ass","dick","cock","cunt","nigger","fag","whore","slut","sex","arse"
-  ];
-  const lowered = clean.toLowerCase();
-  for (const bad of badWords) {
-    if (lowered.includes(bad)) return null;
-  }
-  // Trim to reasonable length
-  return clean.slice(0, 20);
-}
-
-// Firestore leaderboard functions
+// Leaderboard (Firestore)
 async function loadLeaderboard() {
   try {
-    const q = fbQuery(fbCollection(window.db, "leaderboard"),
-                      fbOrderBy("correct", "desc"),
-                      fbOrderBy("distance", "asc"));
+    const q = fbQuery(
+      fbCollection(window.db, "leaderboard"),
+      fbOrderBy("points", "desc"),
+      fbOrderBy("distance", "asc")
+    );
     const snap = await fbGetDocs(q);
     const entries = [];
     snap.forEach(doc => entries.push(doc.data()));
@@ -333,24 +260,33 @@ async function renderLeaderboard() {
     const row = document.createElement("tr");
     row.innerHTML = `
       <td style="padding:0.4rem 0.3rem;">${i + 1}</td>
-      <td style="padding:0.4rem 0.3rem;">${escapeHtml(entry.name)}</td>
-      <td style="padding:0.4rem 0.3rem;">${entry.correct}</td>
-      <td style="padding:0.4rem 0.3rem;">${entry.distance.toFixed(2)}</td>
+      <td style="padding:0.4rem 0.3rem;">${escapeHtml(entry.name ?? '')}</td>
+      <td style="padding:0.4rem 0.3rem;">${entry.points ?? 0}</td>
+      <td style="padding:0.4rem 0.3rem;">${(entry.distance ?? 0).toFixed(2)}</td>
     `;
     leaderboardBody.appendChild(row);
   });
 }
 
-
-
-// small utility to avoid injecting raw HTML
-function escapeHtml(s) {
-  return String(s).replace(/[&<>"']/g, function (m) {
-    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m];
-  });
+// Name sanitization (same idea as before)
+function sanitizeName(name) {
+  if (!name) return null;
+  let clean = name.trim();
+  clean = clean.replace(/[^\p{L}\p{N} \-_'"]/gu, "");
+  if (clean.length < 1) return null;
+  const badWords = ["fuck","shit","bitch","ass","dick","cock","cunt","nigger","fag","whore","slut","sex","arse"];
+  const lowered = clean.toLowerCase();
+  for (const bad of badWords) {
+    if (lowered.includes(bad)) return null;
+  }
+  return clean.slice(0, 20);
 }
 
-// Save score button handler (Firebase version)
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+
+// Save score
 btnSaveScore.addEventListener("click", async () => {
   const raw = playerNameInput.value;
   const clean = sanitizeName(raw);
@@ -358,14 +294,14 @@ btnSaveScore.addEventListener("click", async () => {
     alert("Please enter a valid, non-offensive name (1–20 characters).");
     return;
   }
-  if (score < 5) {
-    alert("You need at least 5 correct answers to join the leaderboard.");
+  if (points < MIN_SCORE_TO_SUBMIT) {
+    alert(`You need at least ${MIN_SCORE_TO_SUBMIT} points to join the leaderboard.`);
     return;
   }
 
   const entry = {
     name: clean,
-    correct: score,
+    points,
     distance: parseFloat(totalDistanceKm.toFixed(3)),
     ts: Date.now()
   };
@@ -376,12 +312,39 @@ btnSaveScore.addEventListener("click", async () => {
   renderLeaderboard();
 });
 
+// UI helpers
+function showMessage(text, bg) {
+  const msg = document.createElement("div");
+  msg.textContent = text;
+  msg.style.position = "fixed";
+  msg.style.left = "50%";
+  msg.style.bottom = "24px";
+  msg.style.transform = "translateX(-50%)";
+  msg.style.background = bg || "rgba(255,255,255,0.95)";
+  msg.style.color = "#000";
+  msg.style.padding = "0.5rem 0.9rem";
+  msg.style.borderRadius = "10px";
+  msg.style.fontWeight = "600";
+  msg.style.boxShadow = "0 10px 30px rgba(0,0,0,0.25)";
+  msg.style.zIndex = "9999";
+  document.body.appendChild(msg);
+  setTimeout(() => msg.remove(), 1400);
+}
 
-// Event listeners
+// Buttons
+btnClearGuess.addEventListener("click", () => {
+  if (guessLocked) return;
+  userGuess = null;
+  if (guessMarker) { map.removeLayer(guessMarker); guessMarker = null; }
+  btnConfirmGuess.disabled = true;
+  btnClearGuess.disabled = true;
+});
+
+btnConfirmGuess.addEventListener("click", confirmGuess);
+
 btnRestart.addEventListener("click", () => setScreen(screenStart));
 btnStart.addEventListener("click", startGame);
 
-// On load render leaderboard (so it's visible on the result screen initially)
-document.addEventListener("DOMContentLoaded", () => {
-  renderLeaderboard();
-});
+// ----------------------------------------------------------------------------
+// NOTE: The old pixel/% static-map code is removed. We now rely on Leaflet.
+// ----------------------------------------------------------------------------

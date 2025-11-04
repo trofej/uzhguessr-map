@@ -4,7 +4,33 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>UZH Map Guessr</title>
+
+  <!-- Your base styles -->
   <link rel="stylesheet" href="styles.css" />
+
+  <!-- Optional: UZH-flavored Leaflet control/theme styles you shared -->
+  <link rel="stylesheet" href="app.css" />
+
+  <!-- Leaflet (map) -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <style>
+    /* Make the map nicely rounded like your photos */
+    #map {
+      width: 100%;
+      height: 360px;
+      border-radius: 16px;
+      overflow: hidden;
+    }
+    /* Light UZH-ish blue chrome (keeps OSM tiles free) */
+    .leaflet-control {
+      border-radius: 8px;
+    }
+    .leaflet-popup-content {
+      font: 600 0.95rem/1.3 system-ui, -apple-system, "Segoe UI", Roboto, Ubuntu, "Noto Sans", sans-serif;
+    }
+  </style>
 </head>
 <body>
   <main class="container">
@@ -15,15 +41,15 @@
     <!-- START SCREEN -->
     <section id="screen-start" class="screen active" aria-labelledby="start-title">
       <h2 id="start-title">Ready to play?</h2>
-      <p>You’ll get a question like “Where is the Uni Aula located?” — click on the correct spot on the UZH map.</p>
+      <p>Explore the interactive map of Zürich and place your guess for each UZH location.</p>
       <button id="btn-start" class="btn primary">Start Map Mode</button>
     </section>
 
     <!-- GAME SCREEN -->
     <section id="screen-game" class="screen" aria-live="polite">
       <div class="status">
-        <div id="round-indicator" aria-live="polite">Round 1/5</div>
-        <div id="score-indicator" aria-live="polite">Score: 0</div>
+        <div id="round-indicator" aria-live="polite">Round 1/10</div>
+        <div id="score-indicator" aria-live="polite">Points: 0</div>
       </div>
 
       <!-- Question Image -->
@@ -34,14 +60,14 @@
       <!-- Question text -->
       <h3 id="question-text" style="margin-top:0.5rem;margin-bottom:1rem;"></h3>
 
-      <!-- Map container -->
+      <!-- INTERACTIVE MAP -->
       <figure class="photo-wrap" style="position:relative;">
-        <img id="campus-map" src="images/uzh_map.jpeg" alt="UZH map" />
-        <div id="marker"></div>
-        <div id="correct-marker"></div>
+        <div id="map" role="application" aria-label="Interactive map of Zürich"></div>
       </figure>
 
-      <div class="controls">
+      <div class="controls" style="gap:.5rem; align-items:center;">
+        <button id="btn-clear-guess" class="btn" disabled>Clear Guess</button>
+        <button id="btn-confirm-guess" class="btn primary" disabled>Confirm Guess</button>
         <button id="btn-next" class="btn" disabled>Next</button>
       </div>
     </section>
@@ -53,7 +79,7 @@
 
       <!-- Name entry for leaderboard (shown only when allowed) -->
       <div id="name-entry" style="display:none; margin-top:1rem;">
-        <label for="player-name" style="color:var(--muted)">Enter your name to join the leaderboard (min 5 correct):</label>
+        <label for="player-name" style="color:var(--muted)">Enter your name to join the leaderboard (min threshold applies):</label>
         <div style="margin-top:0.5rem; display:flex; gap:0.5rem; align-items:center;">
           <input id="player-name" type="text" maxlength="20" placeholder="Your name" style="padding:0.6rem; border-radius:8px; border:1px solid rgba(255,255,255,0.08); background:transparent; color:var(--text)" />
           <button id="btn-save-score" class="btn primary">Save Score</button>
@@ -68,7 +94,7 @@
             <tr>
               <th style="padding:0.5rem 0.3rem;">#</th>
               <th style="padding:0.5rem 0.3rem;">Name</th>
-              <th style="padding:0.5rem 0.3rem;">Correct</th>
+              <th style="padding:0.5rem 0.3rem;">Points</th>
               <th style="padding:0.5rem 0.3rem;">Total Distance (km)</th>
             </tr>
           </thead>
@@ -81,30 +107,27 @@
   </main>
 
   <!-- Firebase SDKs -->
-<script type="module">
-  // Import the Firebase SDKs
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-  import { getFirestore, collection, addDoc, getDocs, query, orderBy } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+    import { getFirestore, collection, addDoc, getDocs, query, orderBy } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
-// Your web app's Firebase configuration
-const firebaseConfig = {
-  apiKey: "AIzaSyCXMlSFVxzzlunW3Goh_6rMWCnbYCXanRQ",
-  authDomain: "uzh-guessr.firebaseapp.com",
-  projectId: "uzh-guessr",
-  storageBucket: "uzh-guessr.firebasestorage.app",
-  messagingSenderId: "599787012847",
-  appId: "1:599787012847:web:42efa3f57ee083546c111a"
-};
+    const firebaseConfig = {
+      apiKey: "AIzaSyCXMlSFVxzzlunW3Goh_6rMWCnbYCXanRQ",
+      authDomain: "uzh-guessr.firebaseapp.com",
+      projectId: "uzh-guessr",
+      storageBucket: "uzh-guessr.firebasestorage.app",
+      messagingSenderId: "599787012847",
+      appId: "1:599787012847:web:42efa3f57ee083546c111a"
+    };
 
-  // Initialize Firebase and export db
-  const app = initializeApp(firebaseConfig);
-  window.db = getFirestore(app);
-  window.fbAddDoc = addDoc;
-  window.fbGetDocs = getDocs;
-  window.fbCollection = collection;
-  window.fbQuery = query;
-  window.fbOrderBy = orderBy;
-</script>
+    const app = initializeApp(firebaseConfig);
+    window.db = getFirestore(app);
+    window.fbAddDoc = addDoc;
+    window.fbGetDocs = getDocs;
+    window.fbCollection = collection;
+    window.fbQuery = query;
+    window.fbOrderBy = orderBy;
+  </script>
 
   <script src="app.js" type="module"></script>
 </body>
