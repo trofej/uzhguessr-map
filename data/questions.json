@@ -4,103 +4,103 @@
     "question": "Where is the Botanischer Garten located?",
     "image": "images/BotanischerGarten.jpg",
     "answer": "Botanischer Garten",
-    "lat": 47.3646,
-    "lng": 8.5565
+    "lat": 47.358633,
+    "lng": 8.561136
   },
   {
     "id": 2,
     "question": "Where is the UZH Hauptgebäude located?",
     "image": "images/Hauptgebäude.jpg",
     "answer": "UZH Hauptgebäude",
-    "lat": 47.3763,
-    "lng": 8.5487
+    "lat": 47.374567,
+    "lng": 8.548583
   },
   {
     "id": 3,
     "question": "Where is the UB Erziehungswissenschaften located?",
     "image": "images/UBErziehungswissenschaften.jpg",
     "answer": "UB Erziehungswissenschaften",
-    "lat": 47.3736,
-    "lng": 8.5450
+    "lat": 47.370957,
+    "lng": 8.554132
   },
   {
     "id": 4,
     "question": "Where is Careum located?",
     "image": "images/Careum.jpg",
     "answer": "Careum",
-    "lat": 47.3769,
-    "lng": 8.5499
+    "lat": 47.375338,
+    "lng": 8.553478
   },
   {
     "id": 5,
     "question": "Where is UB Betriebswirtschaftslehre located?",
     "image": "images/UBBetriebswirtschaftslehre.jpg",
     "answer": "UB Betriebswirtschaftslehre",
-    "lat": 47.3803,
-    "lng": 8.5538
+    "lat": 47.374181,
+    "lng": 8.552657
   },
   {
     "id": 6,
     "question": "Where is Forum (2031) located?",
     "image": "images/Forum (2031).jpg",
     "answer": "Forum (2031)",
-    "lat": 47.3779,
-    "lng": 8.5497
+    "lat": 47.374263,
+    "lng": 8.551067
   },
   {
     "id": 7,
     "question": "Where is Irchelpark located?",
     "image": "images/Irchelpark.jpg",
     "answer": "Irchelpark",
-    "lat": 47.3976,
-    "lng": 8.5443
+    "lat": 47.398175,
+    "lng": 8.544547
   },
   {
     "id": 8,
     "question": "Where is Asien-Orient Institut located?",
     "image": "images/Asien-Orient Institut.jpg",
     "answer": "Asien-Orient Institut",
-    "lat": 47.3767,
-    "lng": 8.5475
+    "lat": 47.372564,
+    "lng": 8.551097
   },
   {
     "id": 9,
     "question": "Where is Rechtswissenschaftliche Bibliothek located?",
     "image": "images/Rechtswissenschaftliche Bibliothek.jpg",
     "answer": "Rechtswissenschaftliche Bibliothek",
-    "lat": 47.3770,
-    "lng": 8.5483
+    "lat": 47.373365,
+    "lng": 8.550783
   },
   {
     "id": 10,
     "question": "Where is Zentrum für Zahnmedizin located?",
     "image": "images/Zentrum für Zahnmedizin.jpg",
     "answer": "Zentrum für Zahnmedizin",
-    "lat": 47.3796,
-    "lng": 8.5534
+    "lat": 47.374582,
+    "lng": 8.552934
   },
   {
     "id": 11,
     "question": "Where is Alter Botanischer Garten located?",
     "image": "images/Alter Botanischer Garten.jpg",
     "answer": "Alter Botanischer Garten",
-    "lat": 47.3713,
-    "lng": 8.5359
+    "lat": 47.371181,
+    "lng": 8.533687
   },
   {
     "id": 12,
     "question": "Where is Theologisches Seminar Kirchgasse located?",
     "image": "images/Theologisches Seminar Kirchgasse.jpg",
     "answer": "Theologisches Seminar Kirchgasse",
-    "lat": 47.3709,
-    "lng": 8.5458
+    "lat": 47.370057,
+    "lng": 8.544519
   },
   {
     "id": 13,
     "question": "Where is Universitätsspital located?",
     "image": "images/Universitätsspital.jpg",
     "answer": "Universitätsspital",
-    "lat": 47.3767,
-    "lng": 8.5486
+    "lat": 47.376623,
+    "lng": 8.549168
   }
 ]
