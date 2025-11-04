@@ -49,11 +49,16 @@ document.addEventListener("DOMContentLoaded", () => {
   }).setView([47.3769, 8.5417], 14);
 
   // Free OSM tiles
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19,
-    minZoom: 12,
-    attribution: '&copy; OpenStreetMap contributors'
-  }).addTo(map);
+  L.tileLayer(
+    'https://api.maptiler.com/maps/bright/{z}/{x}/{y}.png?key=0m0ly2WMir4T3fpwYwHi',
+    {
+      tileSize: 512,
+      zoomOffset: -1,
+      maxZoom: 19,
+      attribution:
+        '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> contributors | MapTiler'
+    }
+  ).addTo(map);
 
   // Blue-ish UI accents are handled via CSS (see app.css/theme tweaks)
 
