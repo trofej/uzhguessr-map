@@ -251,7 +251,7 @@ function finish() {
 async function loadLeaderboard() {
   try {
     const q = fbQuery(
-      fbCollection("leaderboard"),
+      fbCollection(db, "leaderboard"),
       fbOrderBy("points", "desc")
     );
     const snap = await fbGetDocs(q);
@@ -283,15 +283,12 @@ btnSaveScore.addEventListener("click", async () => {
   if (!name) return alert("Enter valid name");
 
   try {
-    await fbAddDoc(
-      fbCollection("leaderboard"),     // ✅ DO NOT pass db here
-      {
-        name,
-        points,
-        distance: parseFloat(totalDistanceKm.toFixed(2)),
-        ts: new Date()                 // nicer than raw number
-      }
-    );
+    await fbAddDoc(fbCollection(db, "leaderboard"), {
+      name,
+      points,
+      distance: Number(totalDistanceKm.toFixed(2)),
+      ts: Date.now()
+    }); 
 
     // keep entry visible so users can submit multiple times if they want
     await renderLeaderboard();
