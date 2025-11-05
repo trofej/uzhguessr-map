@@ -261,7 +261,7 @@ function finish() {
 async function loadLeaderboard() {
   try {
     const q = fbQuery(
-      fbCollection(window.db, "leaderboard"),
+      fbCollection(db, "leaderboard"),
       fbOrderBy("points", "desc"),
       fbOrderBy("distance", "asc")
     );
@@ -288,7 +288,7 @@ btnSaveScore.addEventListener("click", async () => {
   const name = sanitizeName(playerNameInput.value);
   if (!name) return alert("Enter valid name");
 
-  await fbAddDoc(fbCollection(window.db, "leaderboard"), {
+  await fbAddDoc(fbCollection(db, "leaderboard"), {
     name,
     points,
     distance: parseFloat(totalDistanceKm.toFixed(2)),
