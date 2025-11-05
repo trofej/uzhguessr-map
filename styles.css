@@ -211,6 +211,42 @@ body {
   position: relative;
 }
 
+/* ✅ Correct pulsing (green) */
+.pulse-correct-ring {
+  width: 20px;
+  height: 20px;
+  border: 3px solid #60d394;
+  border-radius: 50%;
+  animation: pulse 1.4s infinite;
+}
+
+/* ✅ Wrong pulsing (red) */
+.pulse-wrong-ring {
+  width: 20px;
+  height: 20px;
+  border: 3px solid #ff6b6b;
+  border-radius: 50%;
+  animation: pulse 1.4s infinite;
+}
+.pulse-wrong-dot {
+  width: 10px;
+  height: 10px;
+  background: #ff6b6b;
+  border-radius: 50%;
+  position: absolute;
+  left: 5px;
+  top: 5px;
+}
+
+/* ✅ Round transition animation */
+.fade-screen {
+  animation: fadeIn 0.45s ease;
+}
+@keyframes fadeIn {
+  0% { opacity: 0; transform: scale(0.96); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
 .pulse-dot {
   width: 10px;
   height: 10px;

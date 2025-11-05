@@ -47,6 +47,13 @@ const pulseIcon = L.divIcon({
   iconAnchor: [12, 12]
 });
 
+const pulseWrongIcon = L.divIcon({
+  className: "pulse-marker",
+  html: '<div class="pulse-wrong-ring"></div><div class="pulse-wrong-dot"></div>',
+  iconSize: [24, 24],
+  iconAnchor: [12, 12]
+});
+
 // ✅ Initialize fast & reliable Zürich map
 document.addEventListener("DOMContentLoaded", () => {
   const zurichCenter = [47.3788, 8.5481];
@@ -134,12 +141,17 @@ async function startGame() {
 
 // ✅ Render a question
 function renderRound() {
+  screenGame.classList.add("fade-screen");
+
+  setTimeout(() => {
+    screenGame.classList.remove("fade-screen");
+  }, 450);
+
   const q = gameQuestions[currentIndex];
   guessLocked = false;
   userGuess = null;
 
   clearGuessArtifacts();
-
   questionText.textContent = `Where is: ${q.answer}?`;
   roundIndicator.textContent = `Round ${currentIndex + 1}/${gameQuestions.length}`;
   questionImage.src = q.image;
@@ -149,10 +161,9 @@ function renderRound() {
   btnClearGuess.disabled = true;
 
   map.flyTo([47.3788, 8.5481], 13);
-
-  // ✅ Force correct map redraw after zoom animation
   setTimeout(() => map.invalidateSize(true), 350);
 }
+
 
 // ✅ Place Guess
 function placeGuess(lat, lng) {
@@ -176,22 +187,43 @@ function confirmGuess() {
   const q = gameQuestions[currentIndex];
   const correctPos = [q.lat, q.lng];
 
-  correctMarker = L.marker(correctPos).addTo(map);
-  L.marker(correctPos, { icon: pulseIcon }).addTo(map);
-
   const meters = map.distance([userGuess.lat, userGuess.lng], correctPos);
-  totalDistanceKm += meters / 1000;
+  const km = meters / 1000;
 
   const gained = awardPoints(meters);
   points += gained;
   scoreIndicator.textContent = `Points: ${points}`;
+  totalDistanceKm += km;
 
+  // ✅ Choose pulse color based on answered correctness
+  const pulse = gained > 0 ? pulseIcon : pulseWrongIcon;
+  const resultColor = gained > 0 ? "#8aa1ff" : "#ff6b6b";
+
+  // ✅ Correct marker + pulse
+  correctMarker = L.marker(correctPos).addTo(map);
+  L.marker(correctPos, { icon: pulse }).addTo(map);
+
+  // ✅ Popup with thumbnail + score + distance
+  const popupHtml = `
+    <div style="text-align:center; width:160px;">
+      <strong style="font-size:1rem;">${q.answer}</strong><br>
+      <img src="${q.image}" style="width:100%; height:80px; object-fit:cover; border-radius:6px; margin:6px 0;">
+      <span style="font-size:0.85rem">
+        Distance: ${km.toFixed(2)} km<br>
+        Points: +${gained}
+      </span>
+    </div>
+  `;
+  correctMarker.bindPopup(popupHtml).openPopup();
+
+  // ✅ Line (color depends on correctness)
   lineLayer = L.polyline([correctPos, [userGuess.lat, userGuess.lng]], {
-    color: "#8aa1ff",
+    color: resultColor,
     weight: 3,
     opacity: 0.85
   }).addTo(map);
 
+  // ✅ Camera animation
   map.fitBounds([correctPos, [userGuess.lat, userGuess.lng]], {
     padding: [80, 80],
     animate: true
@@ -200,6 +232,7 @@ function confirmGuess() {
   btnNext.disabled = false;
   btnConfirmGuess.disabled = true;
 }
+
 
 function awardPoints(m) {
   if (m <= 100) return 100;
