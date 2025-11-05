@@ -251,9 +251,8 @@ function finish() {
 async function loadLeaderboard() {
   try {
     const q = fbQuery(
-      fbCollection("leaderboard"),     // ✅ DO NOT pass db here
-      fbOrderBy("points", "desc"),
-      fbOrderBy("distance", "asc")
+      fbCollection("leaderboard"),
+      fbOrderBy("points", "desc")
     );
     const snap = await fbGetDocs(q);
     return snap.docs.map(d => d.data());
