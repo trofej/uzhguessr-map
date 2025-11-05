@@ -286,6 +286,9 @@ async function renderLeaderboard() {
 
 btnSaveScore.addEventListener("click", async () => {
   const name = sanitizeName(playerNameInput.value);
+
+  console.log("Saving to Firestore:", name, points, totalDistanceKm); // ✅ ADD THIS
+
   if (!name) return alert("Enter valid name");
 
   await fbAddDoc(fbCollection(db, "leaderboard"), {
