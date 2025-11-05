@@ -40,13 +40,6 @@ const fbOrderBy = window.fbOrderBy;
 // Leaflet Objects
 let map, guessMarker, correctMarker, lineLayer;
 
-// ✅ Custom Pulsing icons
-const uzhIcon = L.icon({
-  iconUrl: "images/icons/uzh-marker.svg",
-  iconSize: [36, 36],
-  iconAnchor: [18, 36]
-});
-
 const pulseIcon = L.divIcon({
   className: "pulse-marker",
   html: '<div class="pulse-ring"></div><div class="pulse-dot"></div>',
@@ -183,7 +176,7 @@ function confirmGuess() {
   const q = gameQuestions[currentIndex];
   const correctPos = [q.lat, q.lng];
 
-  correctMarker = L.marker(correctPos, { icon: uzhIcon }).addTo(map);
+  correctMarker = L.marker(correctPos).addTo(map);
   L.marker(correctPos, { icon: pulseIcon }).addTo(map);
 
   const meters = map.distance([userGuess.lat, userGuess.lng], correctPos);
