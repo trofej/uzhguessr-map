@@ -40,18 +40,27 @@ const fbOrderBy = window.fbOrderBy;
 // Leaflet Objects
 let map, guessMarker, correctMarker, lineLayer;
 
-// ✅ Custom Pulsing icons
+// ✅ Use your UZH marker everywhere
 const uzhIcon = L.icon({
-  iconUrl: "images/icons/uzh-marker.svg",
+  iconUrl: "images/icons/uzh-marker.png",
   iconSize: [36, 36],
   iconAnchor: [18, 36]
 });
 
+// ✅ Pulsing overlay icon (non-interactive so it never shows a label)
 const pulseIcon = L.divIcon({
   className: "pulse-marker",
   html: '<div class="pulse-ring"></div><div class="pulse-dot"></div>',
   iconSize: [24, 24],
   iconAnchor: [12, 12]
+});
+
+// ✅ Disable Leaflet’s default image marker to avoid the tiny broken icon
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconUrl: "",
+  iconRetinaUrl: "",
+  shadowUrl: ""
 });
 
 // ✅ Initialize fast & reliable Zürich map
@@ -86,12 +95,13 @@ document.addEventListener("DOMContentLoaded", () => {
   ).addTo(map);
 
   map.on("drag", () => map.panInsideBounds(zurichBounds, { animate: false }));
+
+  // ✅ Single click handler (no duplicates). Logs coords for data entry.
   map.on("click", e => {
-    if (!guessLocked) placeGuess(e.latlng.lat, e.latlng.lng);
-  });
-  map.on("click", (e) => {
-  if (!guessLocked) placeGuess(e.latlng.lat, e.latlng.lng);
-  console.log("Lat:", e.latlng.lat.toFixed(6), "Lng:", e.latlng.lng.toFixed(6));
+    if (!guessLocked) {
+      placeGuess(e.latlng.lat, e.latlng.lng);
+      console.log("Lat:", e.latlng.lat.toFixed(6), "Lng:", e.latlng.lng.toFixed(6));
+    }
   });
 
   renderLeaderboard();
@@ -165,7 +175,10 @@ function renderRound() {
 function placeGuess(lat, lng) {
   userGuess = { lat, lng };
   if (guessMarker) map.removeLayer(guessMarker);
-  guessMarker = L.marker([lat, lng]).addTo(map);
+
+  // ✅ Always use UZH icon; title:'' prevents any default "Marker" tooltip
+  guessMarker = L.marker([lat, lng], { icon: uzhIcon, title: "" }).addTo(map);
+
   btnConfirmGuess.disabled = false;
   btnClearGuess.disabled = false;
 }
@@ -183,16 +196,34 @@ function confirmGuess() {
   const q = gameQuestions[currentIndex];
   const correctPos = [q.lat, q.lng];
 
-  correctMarker = L.marker(correctPos, { icon: uzhIcon }).addTo(map);
-  L.marker(correctPos, { icon: pulseIcon }).addTo(map);
+  // Correct marker (UZH pin)
+  correctMarker = L.marker(correctPos, { icon: uzhIcon, title: "" }).addTo(map);
+  // Pulsing overlay (non-interactive so it never shows default label)
+  L.marker(correctPos, { icon: pulseIcon, interactive: false, keyboard: false }).addTo(map);
 
   const meters = map.distance([userGuess.lat, userGuess.lng], correctPos);
-  totalDistanceKm += meters / 1000;
+  const km = meters / 1000;
+  totalDistanceKm += km;
 
   const gained = awardPoints(meters);
   points += gained;
   scoreIndicator.textContent = `Points: ${points}`;
 
+  // ✅ Popup with thumbnail + result info
+  const popupHtml = `
+    <div style="text-align:center; width:160px;">
+      <strong style="font-size:1rem; color:#8aa1ff;">${q.answer}</strong><br>
+      <img src="${q.image}" alt="${q.answer}"
+        style="width:100%; height:90px; object-fit:cover; border-radius:8px; margin:6px 0;">
+      <span style="font-size:0.85rem; color:#aab3d6;">
+        Distance: ${km.toFixed(2)} km<br>
+        Points: +${gained}
+      </span>
+    </div>
+  `;
+  correctMarker.bindPopup(popupHtml).openPopup();
+
+  // Line from guess to correct
   lineLayer = L.polyline([correctPos, [userGuess.lat, userGuess.lng]], {
     color: "#8aa1ff",
     weight: 3,
