@@ -6,6 +6,8 @@
   <title>UZH Map Guessr</title>
 
   <link rel="stylesheet" href="styles.css" />
+  <!-- Remove this line if app.css 404s on your host -->
+  <link rel="stylesheet" href="app.css" />
 
   <link rel="stylesheet"
         href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
@@ -91,43 +93,33 @@
     </section>
   </main>
 
-<!-- ✅ Firebase SDK -->
-<script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-  import {
-    getFirestore, collection, addDoc, getDocs, query, orderBy
-  } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+  <!-- ✅ Firebase SDK (patched bindings) -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+    import {
+      getFirestore, collection, addDoc, getDocs, query, orderBy
+    } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
-  const firebaseConfig = {
-    apiKey: "AIzaSyCXMlSFVxzzlunW3Goh_6rMWCnbYCXanRQ",
-    authDomain: "uzh-guessr.firebaseapp.com",
-    projectId: "uzh-guessr",
-    storageBucket: "uzh-guessr.firebasestorage.app",
-    messagingSenderId: "599787012847",
-    appId: "1:599787012847:web:42efa3f57ee083546c111a"
-  };
+    const firebaseConfig = {
+      apiKey: "AIzaSyCXMlSFVxzzlunW3Goh_6rMWCnbYCXanRQ",
+      authDomain: "uzh-guessr.firebaseapp.com",
+      projectId: "uzh-guessr",
+      storageBucket: "uzh-guessr.firebasestorage.app",
+      messagingSenderId: "599787012847",
+      appId: "1:599787012847:web:42efa3f57ee083546c111a"
+    };
 
-  const app = initializeApp(firebaseConfig);
-  const db = getFirestore(app);
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
 
-  window.db = db;
-  window.fbAddDoc = addDoc;
-  window.fbGetDocs = getDocs;
-  window.fbQuery = query;
-  window.fbOrderBy = orderBy;
-  window.fbCollection = (...args) => collection(db, ...args);
-</script>
-
-<!-- ✅ Ensure Game JS loads correctly -->
-<script>
-document.addEventListener("DOMContentLoaded", () => {
-  const script = document.createElement("script");
-  script.type = "module";
-  script.src = "app.js";
-  document.body.appendChild(script);
-});
-</script>
-
+    // Expose raw Firestore functions (NO wrappers)
+    window.db = db;
+    window.fbCollection = collection; // app.js calls fbCollection(window.db, "leaderboard")
+    window.fbAddDoc   = addDoc;
+    window.fbGetDocs  = getDocs;
+    window.fbQuery    = query;
+    window.fbOrderBy  = orderBy;
+  </script>
 
   <script src="app.js" type="module"></script>
 </body>
