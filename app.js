@@ -1,6 +1,5 @@
 // ✅ UZH Map Guessr  –  Fast + Fixed Carto Map
 const TOTAL_QUESTIONS = 10;
-const MIN_SCORE_TO_SUBMIT = 300;
 
 // State
 let currentIndex = 0;
@@ -250,9 +249,12 @@ btnNext.addEventListener("click", () => {
 function finish() {
   resultSummary.textContent =
     `You scored ${points} points 🎯 Total distance: ${totalDistanceKm.toFixed(2)} km`;
+
   renderLeaderboard();
   setScreen(screenResult);
-  nameEntry.style.display = points >= MIN_SCORE_TO_SUBMIT ? "block" : "none";
+
+  // ✅ Always allow name entry
+  nameEntry.style.display = "block";
 }
 
 // ✅ Leaderboard
