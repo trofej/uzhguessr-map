@@ -29,7 +29,7 @@ const leaderboardBody = document.getElementById("leaderboard-body");
 const btnConfirmGuess = document.getElementById("btn-confirm-guess");
 const btnClearGuess = document.getElementById("btn-clear-guess");
 
-// Firebase
+// Firebase helpers bound in index.html
 const fbAddDoc = window.fbAddDoc;
 const fbGetDocs = window.fbGetDocs;
 const fbCollection = window.fbCollection;
@@ -56,11 +56,7 @@ const pulseWrongIcon = L.divIcon({
 // ✅ Initialize fast & reliable Zürich map
 document.addEventListener("DOMContentLoaded", () => {
   const zurichCenter = [47.3788, 8.5481];
-
-  const zurichBounds = L.latLngBounds(
-    [47.430, 8.450],
-    [47.310, 8.650]
-  );
+  const zurichBounds = L.latLngBounds([47.430, 8.450], [47.310, 8.650]);
 
   map = L.map("map", {
     center: zurichCenter,
@@ -73,7 +69,6 @@ document.addEventListener("DOMContentLoaded", () => {
     preferCanvas: true
   });
 
-  // ✅ FAST - Carto Voyager tiles
   L.tileLayer(
     "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
     {
@@ -85,12 +80,9 @@ document.addEventListener("DOMContentLoaded", () => {
   ).addTo(map);
 
   map.on("drag", () => map.panInsideBounds(zurichBounds, { animate: false }));
-  map.on("click", e => {
-    if (!guessLocked) placeGuess(e.latlng.lat, e.latlng.lng);
-  });
   map.on("click", (e) => {
-  if (!guessLocked) placeGuess(e.latlng.lat, e.latlng.lng);
-  console.log("Lat:", e.latlng.lat.toFixed(6), "Lng:", e.latlng.lng.toFixed(6));
+    if (!guessLocked) placeGuess(e.latlng.lat, e.latlng.lng);
+    console.log("Lat:", e.latlng.lat.toFixed(6), "Lng:", e.latlng.lng.toFixed(6));
   });
 
   renderLeaderboard();
@@ -138,13 +130,10 @@ async function startGame() {
   renderRound();
 }
 
-// ✅ Render a question
+// ✅ Render a question (with light transition)
 function renderRound() {
   screenGame.classList.add("fade-screen");
-
-  setTimeout(() => {
-    screenGame.classList.remove("fade-screen");
-  }, 450);
+  setTimeout(() => screenGame.classList.remove("fade-screen"), 450);
 
   const q = gameQuestions[currentIndex];
   guessLocked = false;
@@ -163,7 +152,6 @@ function renderRound() {
   setTimeout(() => map.invalidateSize(true), 350);
 }
 
-
 // ✅ Place Guess
 function placeGuess(lat, lng) {
   userGuess = { lat, lng };
@@ -176,6 +164,7 @@ function placeGuess(lat, lng) {
 // ✅ Clear map
 function clearGuessArtifacts() {
   [guessMarker, correctMarker, lineLayer].forEach(l => l && map.removeLayer(l));
+  guessMarker = correctMarker = lineLayer = null;
 }
 
 // ✅ Confirm Answer
@@ -232,7 +221,6 @@ function confirmGuess() {
   btnConfirmGuess.disabled = true;
 }
 
-
 function awardPoints(m) {
   if (m <= 100) return 100;
   if (m <= 250) return 70;
@@ -250,24 +238,27 @@ function finish() {
   resultSummary.textContent =
     `You scored ${points} points 🎯 Total distance: ${totalDistanceKm.toFixed(2)} km`;
 
-  renderLeaderboard();
+  renderLeaderboard();         // refresh UI
   setScreen(screenResult);
 
   // ✅ Always allow name entry
   nameEntry.style.display = "block";
 }
 
-// ✅ Leaderboard
+// =========================
+// ✅ Leaderboard (fixed)  |
+// =========================
 async function loadLeaderboard() {
   try {
     const q = fbQuery(
-      fbCollection(db, "leaderboard"),
+      fbCollection("leaderboard"),     // ✅ DO NOT pass db here
       fbOrderBy("points", "desc"),
       fbOrderBy("distance", "asc")
     );
     const snap = await fbGetDocs(q);
     return snap.docs.map(d => d.data());
-  } catch {
+  } catch (err) {
+    console.error("Leaderboard load error:", err);
     return [];
   }
 }
@@ -277,32 +268,42 @@ async function renderLeaderboard() {
   leaderboardBody.innerHTML = data.map((e, i) => `
     <tr>
       <td>${i + 1}</td>
-      <td>${escapeHtml(e.name)}</td>
-      <td>${e.points}</td>
-      <td>${e.distance.toFixed(2)}</td>
+      <td>${escapeHtml(e.name || "")}</td>
+      <td>${e.points ?? 0}</td>
+      <td>${(e.distance ?? 0).toFixed(2)}</td>
     </tr>
   `).join("");
 }
 
+// ✅ Save score and refresh table
 btnSaveScore.addEventListener("click", async () => {
   const name = sanitizeName(playerNameInput.value);
 
-  console.log("Saving to Firestore:", name, points, totalDistanceKm); // ✅ ADD THIS
+  console.log("Saving to Firestore:", name, points, totalDistanceKm);
 
   if (!name) return alert("Enter valid name");
 
-  await fbAddDoc(fbCollection(db, "leaderboard"), {
-    name,
-    points,
-    distance: parseFloat(totalDistanceKm.toFixed(2)),
-    ts: Date.now()
-  });
+  try {
+    await fbAddDoc(
+      fbCollection("leaderboard"),     // ✅ DO NOT pass db here
+      {
+        name,
+        points,
+        distance: parseFloat(totalDistanceKm.toFixed(2)),
+        ts: new Date()                 // nicer than raw number
+      }
+    );
 
-  nameEntry.style.display = "none";
-  renderLeaderboard();
+    // keep entry visible so users can submit multiple times if they want
+    await renderLeaderboard();
+    alert("Saved ✅");
+  } catch (e) {
+    console.error("Save failed:", e);
+    alert("Error saving score ❌");
+  }
 });
 
-// ✅ Helpers
+// Helpers
 function sanitizeName(s) {
   const bad = ["fuck","shit","bitch","ass","dick","cock","cunt","nigger","fag","whore","slut","sex","arse"];
   s = (s || "").trim().slice(0, 20);
@@ -316,7 +317,7 @@ function escapeHtml(s) {
   );
 }
 
-// ✅ Buttons
+// Buttons
 btnClearGuess.addEventListener("click", () => {
   if (!guessLocked) {
     if (guessMarker) map.removeLayer(guessMarker);
@@ -330,5 +331,5 @@ btnConfirmGuess.addEventListener("click", confirmGuess);
 btnStart.addEventListener("click", startGame);
 btnRestart.addEventListener("click", () => setScreen(screenStart));
 
-// ✅ Ensure map always fits viewport if resized
+// Ensure map always fits viewport if resized
 window.addEventListener("resize", () => map && map.invalidateSize(true));
