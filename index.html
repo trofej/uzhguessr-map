@@ -6,6 +6,7 @@
   <title>UZH Map Guessr</title>
 
   <link rel="stylesheet" href="styles.css" />
+  <!-- Remove this line if app.css 404s on your host -->
   <link rel="stylesheet" href="app.css" />
 
   <link rel="stylesheet"
@@ -30,11 +31,6 @@
       <h2>Ready to play?</h2>
       <p>Explore the interactive map of Zürich and place your guess for each UZH location. 10 rounds!</p>
       <button id="btn-start" class="btn primary">Start Map Mode</button>
-
-      <!-- ✅ Games Played Counter -->
-      <p id="games-played" style="margin-top:1rem; color:var(--accent-2); font-weight:600;">
-        Games Played: ...
-      </p>
     </section>
 
     <!-- GAME SCREEN -->
@@ -66,17 +62,22 @@
       <h2>Results</h2>
       <p id="result-summary"></p>
 
+      <!-- Always allow name entry -->
       <div id="name-entry" style="margin-top:1rem;">
         <label for="player-name" style="color:var(--muted)">Enter your name for the leaderboard:</label>
         <div style="margin-top:0.5rem; display:flex; gap:0.5rem;">
-          <input id="player-name" type="text" maxlength="20" placeholder="Your name" />
+          <input id="player-name" type="text" maxlength="20"
+                 placeholder="Your name"
+                 style="padding:0.6rem; border-radius:8px;
+                        border:1px solid rgba(255,255,255,0.08);
+                        background:transparent; color:var(--text)" />
           <button id="btn-save-score" class="btn primary">Save Score</button>
         </div>
       </div>
 
       <div id="leaderboard" style="margin-top:1.5rem;">
         <h3>Leaderboard</h3>
-        <table id="leaderboard-table">
+        <table id="leaderboard-table" style="width:100%; border-collapse:collapse; text-align:left;">
           <thead>
             <tr>
               <th>#</th><th>Name</th><th>Points</th><th>Total Distance (km)</th>
@@ -92,12 +93,11 @@
     </section>
   </main>
 
-
-  <!-- ✅ Firebase SDK FIRST -->
+  <!-- ✅ Firebase SDK (patched bindings) -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
     import {
-      getFirestore, collection, addDoc, getDocs, query, orderBy, updateDoc
+      getFirestore, collection, addDoc, getDocs, query, orderBy
     } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
     const firebaseConfig = {
@@ -112,17 +112,15 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
+    // Expose raw Firestore functions (NO wrappers)
     window.db = db;
-    window.fbCollection = collection;
+    window.fbCollection = collection; // app.js calls fbCollection(window.db, "leaderboard")
     window.fbAddDoc   = addDoc;
     window.fbGetDocs  = getDocs;
     window.fbQuery    = query;
     window.fbOrderBy  = orderBy;
-    window.fbUpdateDoc = updateDoc;
   </script>
 
-  <!-- ✅ THEN load app.js -->
   <script src="app.js" type="module"></script>
-
 </body>
 </html>
