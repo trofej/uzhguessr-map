@@ -120,7 +120,7 @@ function setScreen(s) {
 // ✅ Firestore: Increment Game Counter
 async function incrementGamePlays() {
   try {
-    const statsRef = fbDoc(db, "stats", "gamesPlayed");
+    const statsRef = fbDoc(db, "stats", "gamesPlayedCounter");
     await fbUpdateDoc(statsRef, {
       gamesPlayed: fbIncrement(1)
     });
