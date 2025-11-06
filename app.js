@@ -28,6 +28,7 @@ const btnSaveScore = document.getElementById("btn-save-score");
 const leaderboardBody = document.getElementById("leaderboard-body");
 const btnConfirmGuess = document.getElementById("btn-confirm-guess");
 const btnClearGuess = document.getElementById("btn-clear-guess");
+const gamesPlayedLabel = document.getElementById("games-played-label");
 
 // Firebase helpers bound in index.html
 const fbAddDoc = window.fbAddDoc;
@@ -38,6 +39,7 @@ const fbOrderBy = window.fbOrderBy;
 const fbDoc = window.fbDoc;
 const fbUpdateDoc = window.fbUpdateDoc;
 const fbIncrement = window.fbIncrement;
+const fbGetDoc = window.fbGetDoc;
 const db = window.db;
 
 // Leaflet Objects
@@ -57,7 +59,7 @@ const pulseWrongIcon = L.divIcon({
   iconAnchor: [12, 12]
 });
 
-// ✅ Initialize fast & reliable Zürich map
+// ✅ Initialize map
 document.addEventListener("DOMContentLoaded", () => {
   const zurichCenter = [47.3788, 8.5481];
   const zurichBounds = L.latLngBounds([47.430, 8.450], [47.310, 8.650]);
@@ -89,9 +91,10 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   renderLeaderboard();
+  loadGameStats(); // ✅ load stats on startup
 });
 
-// ✅ Load questions
+// ✅ Load questions data
 async function loadQuestions() {
   try {
     const res = await fetch("data/questions.json");
@@ -108,25 +111,31 @@ function shuffleArray(a) {
 function setScreen(s) {
   [screenStart, screenGame, screenResult].forEach(el => el.classList.remove("active"));
   s.classList.add("active");
-
-  if (s === screenGame && map) {
-    setTimeout(() => {
-      map.invalidateSize(true);
-      map.setView([47.3788, 8.5481], 13);
-    }, 200);
-  }
 }
 
-// ✅ Firestore: Increment Game Counter
+// ✅ Increment games played counter in Firestore
 async function incrementGamePlays() {
   try {
     const statsRef = fbDoc(db, "stats", "gamesPlayed");
-    await fbUpdateDoc(statsRef, {
-      gamesPlayed: fbIncrement(1)
-    });
+    await fbUpdateDoc(statsRef, { number: fbIncrement(1) });
     console.log("✅ Game count incremented");
+    loadGameStats(); // ✅ update UI immediately
   } catch (err) {
     console.error("❌ Failed to increment game counter", err);
+  }
+}
+
+// ✅ Fetch and display counter on start page
+async function loadGameStats() {
+  try {
+    const statsRef = fbDoc(db, "stats", "gamesPlayed");
+    const snap = await fbGetDoc(statsRef);
+    if (snap.exists()) {
+      const data = snap.data();
+      gamesPlayedLabel.textContent = `👥 Games played: ${data.number}`;
+    }
+  } catch (err) {
+    console.error("Stats load error:", err);
   }
 }
 
@@ -134,15 +143,9 @@ async function incrementGamePlays() {
 async function startGame() {
   if (!QUESTIONS.length) await loadQuestions();
 
-  // ✅ Increment counter here
-  incrementGamePlays();
+  incrementGamePlays(); // ✅ Count game start
 
   clearGuessArtifacts();
-  map.eachLayer(l => {
-    if (l instanceof L.Marker || l instanceof L.Polyline) {
-      map.removeLayer(l);
-    }
-  });
   map.closePopup();
 
   gameQuestions = shuffleArray(QUESTIONS).slice(0, TOTAL_QUESTIONS);
@@ -153,18 +156,14 @@ async function startGame() {
   guessLocked = false;
   userGuess = null;
 
-  map.setView([47.3788, 8.5481], 13);
-  setTimeout(() => map.invalidateSize(true), 200);
-
   setScreen(screenGame);
   renderRound();
 }
 
-// ✅ Render a question
+// ✅ Render question
 function renderRound() {
   const q = gameQuestions[currentIndex];
   guessLocked = false;
-  userGuess = null;
   clearGuessArtifacts();
 
   questionText.textContent = `Where is: ${q.answer}?`;
@@ -175,7 +174,7 @@ function renderRound() {
   btnConfirmGuess.disabled = true;
   btnClearGuess.disabled = true;
 
-  map.flyTo([47.3788, 8.5481], 13);
+  map.setView([47.3788, 8.5481], 13);
 }
 
 function placeGuess(lat, lng) {
@@ -200,35 +199,30 @@ function confirmGuess() {
 
   const meters = map.distance([userGuess.lat, userGuess.lng], correctPos);
   const km = meters / 1000;
-
   const gained = awardPoints(meters);
+
   points += gained;
-  scoreIndicator.textContent = `Points: ${points}`;
   totalDistanceKm += km;
+  scoreIndicator.textContent = `Points: ${points}`;
 
   const pulse = gained > 0 ? pulseIcon : pulseWrongIcon;
-  const resultColor = gained > 0 ? "#8aa1ff" : "#ff6b6b";
-
   correctMarker = L.marker(correctPos).addTo(map);
-  L.marker(correctPos, { icon: pulse }).addTo(map);
-
-  const popupHtml = `
-    <div style="text-align:center; width:160px;">
-      <strong style="font-size:1rem;">${q.answer}</strong><br>
-      <img src="${q.image}" style="width:100%; height:80px; object-fit:cover; border-radius:6px; margin:6px 0;">
-      <span style="font-size:0.85rem">
-        Distance: ${km.toFixed(2)} km<br>
-        Points: +${gained}
-      </span>
-    </div>
-  `;
-  correctMarker.bindPopup(popupHtml).openPopup();
-
   lineLayer = L.polyline([correctPos, [userGuess.lat, userGuess.lng]], {
-    color: resultColor,
+    color: gained > 0 ? "#8aa1ff" : "#ff6b6b",
     weight: 3,
     opacity: 0.85
   }).addTo(map);
+
+  correctMarker.bindPopup(`
+    <div style="text-align:center; width:160px;">
+      <strong>${q.answer}</strong><br>
+      <img src="${q.image}" style="width:100%; height:80px; object-fit:cover; border-radius:6px; margin:6px 0;">
+      Distance: ${km.toFixed(2)} km<br>
+      Points: +${gained}
+    </div>
+  `).openPopup();
+
+  L.marker(correctPos, { icon: pulse }).addTo(map);
 
   map.fitBounds([correctPos, [userGuess.lat, userGuess.lng]], {
     padding: [80, 80],
@@ -257,7 +251,6 @@ function finish() {
 
   renderLeaderboard();
   setScreen(screenResult);
-
   nameEntry.style.display = "block";
 }
 
@@ -270,7 +263,7 @@ async function loadLeaderboard() {
     );
     const snap = await fbGetDocs(q);
     return snap.docs.map(d => d.data());
-  } catch (err) {
+  } catch {
     return [];
   }
 }
@@ -289,22 +282,17 @@ async function renderLeaderboard() {
 
 btnSaveScore.addEventListener("click", async () => {
   const name = sanitizeName(playerNameInput.value);
-
   if (!name) return alert("Enter valid name");
 
-  try {
-    await fbAddDoc(fbCollection(db, "leaderboard"), {
-      name,
-      points,
-      distance: Number(totalDistanceKm.toFixed(2)),
-      ts: Date.now()
-    });
+  await fbAddDoc(fbCollection(db, "leaderboard"), {
+    name,
+    points,
+    distance: Number(totalDistanceKm.toFixed(2)),
+    ts: Date.now()
+  });
 
-    await renderLeaderboard();
-    alert("Saved ✅");
-  } catch {
-    alert("Error saving score ❌");
-  }
+  renderLeaderboard();
+  alert("Saved ✅");
 });
 
 function sanitizeName(s) {
@@ -332,5 +320,4 @@ btnClearGuess.addEventListener("click", () => {
 btnConfirmGuess.addEventListener("click", confirmGuess);
 btnStart.addEventListener("click", startGame);
 btnRestart.addEventListener("click", () => setScreen(screenStart));
-
 window.addEventListener("resize", () => map && map.invalidateSize(true));
