@@ -35,6 +35,10 @@ const fbGetDocs = window.fbGetDocs;
 const fbCollection = window.fbCollection;
 const fbQuery = window.fbQuery;
 const fbOrderBy = window.fbOrderBy;
+const fbDoc = window.fbDoc;
+const fbUpdateDoc = window.fbUpdateDoc;
+const fbIncrement = window.fbIncrement;
+const db = window.db;
 
 // Leaflet Objects
 let map, guessMarker, correctMarker, lineLayer;
@@ -82,7 +86,6 @@ document.addEventListener("DOMContentLoaded", () => {
   map.on("drag", () => map.panInsideBounds(zurichBounds, { animate: false }));
   map.on("click", (e) => {
     if (!guessLocked) placeGuess(e.latlng.lat, e.latlng.lng);
-    console.log("Lat:", e.latlng.lat.toFixed(6), "Lng:", e.latlng.lng.toFixed(6));
   });
 
   renderLeaderboard();
@@ -102,7 +105,6 @@ function shuffleArray(a) {
   return [...a].sort(() => Math.random() - 0.5);
 }
 
-// ✅ IMPORTANT: Fix partial map rendering by invalidating size
 function setScreen(s) {
   [screenStart, screenGame, screenResult].forEach(el => el.classList.remove("active"));
   s.classList.add("active");
@@ -115,11 +117,26 @@ function setScreen(s) {
   }
 }
 
+// ✅ Firestore: Increment Game Counter
+async function incrementGamePlays() {
+  try {
+    const statsRef = fbDoc(db, "stats", "gamesPlayedCounter");
+    await fbUpdateDoc(statsRef, {
+      gamesPlayed: fbIncrement(1)
+    });
+    console.log("✅ Game count incremented");
+  } catch (err) {
+    console.error("❌ Failed to increment game counter", err);
+  }
+}
+
 // ✅ Start Game
 async function startGame() {
   if (!QUESTIONS.length) await loadQuestions();
 
-  // ✅ Remove ALL old Leaflet layers
+  // ✅ Increment counter here
+  incrementGamePlays();
+
   clearGuessArtifacts();
   map.eachLayer(l => {
     if (l instanceof L.Marker || l instanceof L.Polyline) {
@@ -136,7 +153,6 @@ async function startGame() {
   guessLocked = false;
   userGuess = null;
 
-  // ✅ Reset map properly
   map.setView([47.3788, 8.5481], 13);
   setTimeout(() => map.invalidateSize(true), 200);
 
@@ -144,17 +160,13 @@ async function startGame() {
   renderRound();
 }
 
-
-// ✅ Render a question (with light transition)
+// ✅ Render a question
 function renderRound() {
-  screenGame.classList.add("fade-screen");
-  setTimeout(() => screenGame.classList.remove("fade-screen"), 450);
-
   const q = gameQuestions[currentIndex];
   guessLocked = false;
   userGuess = null;
-
   clearGuessArtifacts();
+
   questionText.textContent = `Where is: ${q.answer}?`;
   roundIndicator.textContent = `Round ${currentIndex + 1}/${gameQuestions.length}`;
   questionImage.src = q.image;
@@ -164,10 +176,8 @@ function renderRound() {
   btnClearGuess.disabled = true;
 
   map.flyTo([47.3788, 8.5481], 13);
-  setTimeout(() => map.invalidateSize(true), 350);
 }
 
-// ✅ Place Guess
 function placeGuess(lat, lng) {
   userGuess = { lat, lng };
   if (guessMarker) map.removeLayer(guessMarker);
@@ -176,13 +186,11 @@ function placeGuess(lat, lng) {
   btnClearGuess.disabled = false;
 }
 
-// ✅ Clear map
 function clearGuessArtifacts() {
   [guessMarker, correctMarker, lineLayer].forEach(l => l && map.removeLayer(l));
   guessMarker = correctMarker = lineLayer = null;
 }
 
-// ✅ Confirm Answer
 function confirmGuess() {
   if (!userGuess) return;
   guessLocked = true;
@@ -198,15 +206,12 @@ function confirmGuess() {
   scoreIndicator.textContent = `Points: ${points}`;
   totalDistanceKm += km;
 
-  // ✅ Choose pulse color based on answered correctness
   const pulse = gained > 0 ? pulseIcon : pulseWrongIcon;
   const resultColor = gained > 0 ? "#8aa1ff" : "#ff6b6b";
 
-  // ✅ Correct marker + pulse
   correctMarker = L.marker(correctPos).addTo(map);
   L.marker(correctPos, { icon: pulse }).addTo(map);
 
-  // ✅ Popup with thumbnail + score + distance
   const popupHtml = `
     <div style="text-align:center; width:160px;">
       <strong style="font-size:1rem;">${q.answer}</strong><br>
@@ -219,14 +224,12 @@ function confirmGuess() {
   `;
   correctMarker.bindPopup(popupHtml).openPopup();
 
-  // ✅ Line (color depends on correctness)
   lineLayer = L.polyline([correctPos, [userGuess.lat, userGuess.lng]], {
     color: resultColor,
     weight: 3,
     opacity: 0.85
   }).addTo(map);
 
-  // ✅ Camera animation
   map.fitBounds([correctPos, [userGuess.lat, userGuess.lng]], {
     padding: [80, 80],
     animate: true
@@ -244,7 +247,6 @@ function awardPoints(m) {
   return 0;
 }
 
-// ✅ Next / Finish
 btnNext.addEventListener("click", () => {
   currentIndex < gameQuestions.length - 1 ? (currentIndex++, renderRound()) : finish();
 });
@@ -253,16 +255,13 @@ function finish() {
   resultSummary.textContent =
     `You scored ${points} points 🎯 Total distance: ${totalDistanceKm.toFixed(2)} km`;
 
-  renderLeaderboard();         // refresh UI
+  renderLeaderboard();
   setScreen(screenResult);
 
-  // ✅ Always allow name entry
   nameEntry.style.display = "block";
 }
 
-// =========================
-// ✅ Leaderboard (fixed)  |
-// =========================
+// ✅ Leaderboard
 async function loadLeaderboard() {
   try {
     const q = fbQuery(
@@ -272,7 +271,6 @@ async function loadLeaderboard() {
     const snap = await fbGetDocs(q);
     return snap.docs.map(d => d.data());
   } catch (err) {
-    console.error("Leaderboard load error:", err);
     return [];
   }
 }
@@ -289,11 +287,8 @@ async function renderLeaderboard() {
   `).join("");
 }
 
-// ✅ Save score and refresh table
 btnSaveScore.addEventListener("click", async () => {
   const name = sanitizeName(playerNameInput.value);
-
-  console.log("Saving to Firestore:", name, points, totalDistanceKm);
 
   if (!name) return alert("Enter valid name");
 
@@ -303,18 +298,15 @@ btnSaveScore.addEventListener("click", async () => {
       points,
       distance: Number(totalDistanceKm.toFixed(2)),
       ts: Date.now()
-    }); 
+    });
 
-    // keep entry visible so users can submit multiple times if they want
     await renderLeaderboard();
     alert("Saved ✅");
-  } catch (e) {
-    console.error("Save failed:", e);
+  } catch {
     alert("Error saving score ❌");
   }
 });
 
-// Helpers
 function sanitizeName(s) {
   const bad = ["fuck","shit","bitch","ass","dick","cock","cunt","nigger","fag","whore","slut","sex","arse"];
   s = (s || "").trim().slice(0, 20);
@@ -328,7 +320,6 @@ function escapeHtml(s) {
   );
 }
 
-// Buttons
 btnClearGuess.addEventListener("click", () => {
   if (!guessLocked) {
     if (guessMarker) map.removeLayer(guessMarker);
@@ -340,16 +331,6 @@ btnClearGuess.addEventListener("click", () => {
 
 btnConfirmGuess.addEventListener("click", confirmGuess);
 btnStart.addEventListener("click", startGame);
-btnRestart.addEventListener("click", () => {
-  clearGuessArtifacts();
-  map.eachLayer(l => {
-    if (l instanceof L.Marker || l instanceof L.Polyline) {
-      map.removeLayer(l);
-    }
-  });
-  map.closePopup();
-  setScreen(screenStart);
-});
+btnRestart.addEventListener("click", () => setScreen(screenStart));
 
-// Ensure map always fits viewport if resized
 window.addEventListener("resize", () => map && map.invalidateSize(true));
