@@ -5,10 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>UZH Map Guessr</title>
 
+  <!-- Main styling -->
   <link rel="stylesheet" href="styles.css" />
-  <!-- Remove this line if app.css 404s on your host -->
-  <link rel="stylesheet" href="app.css" />
 
+  <!-- Leaflet Map -->
   <link rel="stylesheet"
         href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
   <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -26,14 +26,21 @@
       <h1>UZH Map Guessr</h1>
     </header>
 
-    <!-- START SCREEN -->
+    <!-- ✅ START SCREEN -->
     <section id="screen-start" class="screen active">
       <h2>Ready to play?</h2>
       <p>Explore the interactive map of Zürich and place your guess for each UZH location. 10 rounds!</p>
+
+      <!-- ✅ Live game counter from Firestore -->
+      <div id="games-played"
+           style="margin:0.6rem 0 1.2rem; font-size:0.95rem; color:var(--muted);">
+        Total Games Played: loading...
+      </div>
+
       <button id="btn-start" class="btn primary">Start Map Mode</button>
     </section>
 
-    <!-- GAME SCREEN -->
+    <!-- ✅ GAME SCREEN -->
     <section id="screen-game" class="screen">
       <div class="status">
         <div id="round-indicator">Round 1/10</div>
@@ -57,12 +64,11 @@
       </div>
     </section>
 
-    <!-- RESULT SCREEN -->
+    <!-- ✅ RESULT SCREEN -->
     <section id="screen-result" class="screen">
       <h2>Results</h2>
       <p id="result-summary"></p>
 
-      <!-- Always allow name entry -->
       <div id="name-entry" style="margin-top:1rem;">
         <label for="player-name" style="color:var(--muted)">Enter your name for the leaderboard:</label>
         <div style="margin-top:0.5rem; display:flex; gap:0.5rem;">
@@ -93,12 +99,12 @@
     </section>
   </main>
 
-  <!-- ✅ Firebase SDK (patched bindings with increment support) -->
+  <!-- ✅ Firebase SDK -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
     import {
       getFirestore, collection, addDoc, getDocs, query, orderBy,
-      doc, updateDoc, increment
+      doc, updateDoc, increment, getDoc, setDoc
     } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
     const firebaseConfig = {
@@ -115,15 +121,15 @@
 
     window.db = db;
     window.fbCollection = collection;
-    window.fbAddDoc   = addDoc;
-    window.fbGetDocs  = getDocs;
-    window.fbQuery    = query;
-    window.fbOrderBy  = orderBy;
-
-    // ✅ New bindings for counter feature
+    window.fbAddDoc = addDoc;
+    window.fbGetDocs = getDocs;
+    window.fbQuery = query;
+    window.fbOrderBy = orderBy;
     window.fbDoc = doc;
     window.fbUpdateDoc = updateDoc;
     window.fbIncrement = increment;
+    window.fbGetDoc = getDoc;
+    window.fbSetDoc = setDoc;
   </script>
 
   <script src="app.js" type="module"></script>

@@ -1,4 +1,4 @@
-// ✅ UZH Map Guessr  –  Fast + Fixed Carto Map
+// ✅ UZH Map Guessr – Fast + Fixed Carto Map
 const TOTAL_QUESTIONS = 10;
 
 // State
@@ -9,6 +9,10 @@ let guessLocked = false;
 let QUESTIONS = [];
 let gameQuestions = [];
 let totalDistanceKm = 0;
+let gamesPlayed = 0;
+
+// ✅ Stats Document ID (Firestore)
+const STATS_DOC_ID = "gamesPlayed";
 
 // UI Elements
 const screenStart = document.getElementById("screen-start");
@@ -28,28 +32,32 @@ const btnSaveScore = document.getElementById("btn-save-score");
 const leaderboardBody = document.getElementById("leaderboard-body");
 const btnConfirmGuess = document.getElementById("btn-confirm-guess");
 const btnClearGuess = document.getElementById("btn-clear-guess");
+const gamesPlayedDisplay = document.getElementById("games-played");
 
-// Firebase helpers bound in index.html
+// Firebase helpers
+const db = window.db;
+const fbCollection = window.fbCollection;
 const fbAddDoc = window.fbAddDoc;
 const fbGetDocs = window.fbGetDocs;
-const fbCollection = window.fbCollection;
 const fbQuery = window.fbQuery;
 const fbOrderBy = window.fbOrderBy;
 const fbDoc = window.fbDoc;
-const fbUpdateDoc = window.fbUpdateDoc;
 const fbIncrement = window.fbIncrement;
-const db = window.db;
+const fbGetDoc = window.fbGetDoc;
+const fbSetDoc = window.fbSetDoc;
 
-// Leaflet Objects
+// Leaflet
 let map, guessMarker, correctMarker, lineLayer;
+let heatLayer = L.layerGroup();
+let heatData = [];
 
+// ✅ Pulse icons
 const pulseIcon = L.divIcon({
   className: "pulse-marker",
   html: '<div class="pulse-ring"></div><div class="pulse-dot"></div>',
   iconSize: [24, 24],
   iconAnchor: [12, 12]
 });
-
 const pulseWrongIcon = L.divIcon({
   className: "pulse-marker",
   html: '<div class="pulse-wrong-ring"></div><div class="pulse-wrong-dot"></div>',
@@ -57,280 +65,250 @@ const pulseWrongIcon = L.divIcon({
   iconAnchor: [12, 12]
 });
 
-// ✅ Initialize fast & reliable Zürich map
-document.addEventListener("DOMContentLoaded", () => {
-  const zurichCenter = [47.3788, 8.5481];
-  const zurichBounds = L.latLngBounds([47.430, 8.450], [47.310, 8.650]);
+function clearGuessArtifacts() {
+  [guessMarker, correctMarker, lineLayer].forEach(m => m && map.removeLayer(m));
+  guessMarker = correctMarker = lineLayer = null;
+}
 
+// ✅ Remove ALL previous markers except basemap
+function clearAllMapLayers() {
+  map.eachLayer(layer => {
+    if (!(layer instanceof L.TileLayer)) {
+      map.removeLayer(layer);
+    }
+  });
+}
+
+// ✅ Game counter
+async function loadGameCounter() {
+  const ref = fbDoc(db, "stats", STATS_DOC_ID);
+  const snap = await fbGetDoc(ref);
+  if (snap.exists()) gamesPlayed = snap.data().gamesPlayed || 0;
+  else await fbSetDoc(ref, { gamesPlayed: 0 });
+  gamesPlayedDisplay.textContent = `Total Games Played: ${gamesPlayed}`;
+}
+async function incrementGamePlays() {
+  await fbSetDoc(fbDoc(db, "stats", STATS_DOC_ID), { gamesPlayed: fbIncrement(1) }, { merge: true });
+  gamesPlayed++;
+  gamesPlayedDisplay.textContent = `Total Games Played: ${gamesPlayed}`;
+}
+
+// ✅ Map init
+document.addEventListener("DOMContentLoaded", () => {
   map = L.map("map", {
-    center: zurichCenter,
+    center: [47.3788, 8.5481],
     zoom: 13,
     minZoom: 12,
     maxZoom: 19,
-    zoomControl: true,
-    maxBounds: zurichBounds,
-    maxBoundsViscosity: 1.0,
-    preferCanvas: true
+    preferCanvas: true,
+    maxBounds: L.latLngBounds([47.430, 8.450], [47.310, 8.650]),
+    maxBoundsViscosity: 1.0
   });
 
-  L.tileLayer(
-    "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
-    {
-      subdomains: "abcd",
-      noWrap: true,
-      maxZoom: 19,
-      attribution: "&copy; OpenStreetMap contributors &copy; Carto"
-    }
-  ).addTo(map);
+  L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png", {
+    subdomains: "abcd",
+    maxZoom: 19
+  }).addTo(map);
 
-  map.on("drag", () => map.panInsideBounds(zurichBounds, { animate: false }));
-  map.on("click", (e) => {
-    if (!guessLocked) placeGuess(e.latlng.lat, e.latlng.lng);
-  });
+  map.on("drag", () => map.panInsideBounds(map.options.maxBounds));
+  map.on("click", e => !guessLocked && placeGuess(e.latlng.lat, e.latlng.lng));
 
+  loadGameCounter();
   renderLeaderboard();
+  renderHeatmap();
 });
 
-// ✅ Load questions
-async function loadQuestions() {
-  try {
-    const res = await fetch("data/questions.json");
-    QUESTIONS = await res.json();
-  } catch {
-    QUESTIONS = [];
-  }
-}
-
-function shuffleArray(a) {
-  return [...a].sort(() => Math.random() - 0.5);
-}
-
+// ✅ UI switching
 function setScreen(s) {
   [screenStart, screenGame, screenResult].forEach(el => el.classList.remove("active"));
   s.classList.add("active");
-
-  if (s === screenGame && map) {
-    setTimeout(() => {
-      map.invalidateSize(true);
-      map.setView([47.3788, 8.5481], 13);
-    }, 200);
-  }
+  if (s === screenGame) setTimeout(() => map.invalidateSize(), 200);
 }
 
-// ✅ Firestore: Increment Game Counter
-async function incrementGamePlays() {
-  try {
-    const statsRef = fbDoc(db, "stats", "gamesPlayedCounter");
-    await fbUpdateDoc(statsRef, {
-      gamesPlayed: fbIncrement(1)
-    });
-    console.log("✅ Game count incremented");
-  } catch (err) {
-    console.error("❌ Failed to increment game counter", err);
-  }
-}
-
-// ✅ Start Game
+// ✅ Start game
 async function startGame() {
-  if (!QUESTIONS.length) await loadQuestions();
-
-  // ✅ Increment counter here
+  if (!QUESTIONS.length) {
+    const res = await fetch("data/questions.json");
+    QUESTIONS = await res.json();
+  }
   incrementGamePlays();
 
   clearGuessArtifacts();
-  map.eachLayer(l => {
-    if (l instanceof L.Marker || l instanceof L.Polyline) {
-      map.removeLayer(l);
-    }
-  });
+  clearAllMapLayers(); // ✅ Critical - Full wipe
   map.closePopup();
 
-  gameQuestions = shuffleArray(QUESTIONS).slice(0, TOTAL_QUESTIONS);
+  // ✅ Keep basemap only
+  heatLayer.remove(); // hide stored heatmap
+
+  gameQuestions = [...QUESTIONS].sort(() => Math.random() - 0.5).slice(0, TOTAL_QUESTIONS);
   currentIndex = 0;
   points = 0;
   totalDistanceKm = 0;
-  scoreIndicator.textContent = "Points: 0";
-  guessLocked = false;
   userGuess = null;
+  guessLocked = false;
+  scoreIndicator.textContent = "Points: 0";
 
   map.setView([47.3788, 8.5481], 13);
-  setTimeout(() => map.invalidateSize(true), 200);
-
   setScreen(screenGame);
   renderRound();
 }
 
-// ✅ Render a question
+// ✅ Render round
 function renderRound() {
-  const q = gameQuestions[currentIndex];
+  clearGuessArtifacts();
   guessLocked = false;
   userGuess = null;
-  clearGuessArtifacts();
 
+  const q = gameQuestions[currentIndex];
   questionText.textContent = `Where is: ${q.answer}?`;
   roundIndicator.textContent = `Round ${currentIndex + 1}/${gameQuestions.length}`;
   questionImage.src = q.image;
 
-  btnNext.disabled = true;
   btnConfirmGuess.disabled = true;
   btnClearGuess.disabled = true;
-
-  map.flyTo([47.3788, 8.5481], 13);
+  btnNext.disabled = true;
 }
 
+// ✅ Place guess
 function placeGuess(lat, lng) {
   userGuess = { lat, lng };
   if (guessMarker) map.removeLayer(guessMarker);
-  guessMarker = L.marker([lat, lng]).addTo(map);
+
+  guessMarker = L.circleMarker([lat, lng], {
+    radius: 8,
+    color: "#c9a600",
+    weight: 3,
+    fillColor: "#ffeb3b",
+    fillOpacity: 1
+  })
+    .addTo(map)
+    .bindTooltip("Your Guess", { permanent: true, direction: "top", offset: [0, -6] });
+
   btnConfirmGuess.disabled = false;
   btnClearGuess.disabled = false;
 }
 
-function clearGuessArtifacts() {
-  [guessMarker, correctMarker, lineLayer].forEach(l => l && map.removeLayer(l));
-  guessMarker = correctMarker = lineLayer = null;
-}
-
+// ✅ Confirm guess
 function confirmGuess() {
   if (!userGuess) return;
   guessLocked = true;
 
   const q = gameQuestions[currentIndex];
-  const correctPos = [q.lat, q.lng];
-
-  const meters = map.distance([userGuess.lat, userGuess.lng], correctPos);
+  const correct = [q.lat, q.lng];
+  const meters = map.distance([userGuess.lat, userGuess.lng], correct);
+  const gained = scoreFromDistance(meters);
   const km = meters / 1000;
 
-  const gained = awardPoints(meters);
   points += gained;
-  scoreIndicator.textContent = `Points: ${points}`;
   totalDistanceKm += km;
+  scoreIndicator.textContent = `Points: ${points}`;
 
-  const pulse = gained > 0 ? pulseIcon : pulseWrongIcon;
-  const resultColor = gained > 0 ? "#8aa1ff" : "#ff6b6b";
+  const { label, color } = accuracyRating(meters);
+  correctMarker = L.marker(correct).addTo(map);
 
-  correctMarker = L.marker(correctPos).addTo(map);
-  L.marker(correctPos, { icon: pulse }).addTo(map);
+  correctMarker.bindPopup(`
+    <strong style="background:${color};padding:4px 10px;border-radius:8px;display:inline-block;">
+      ${label}
+    </strong><br><br>
+    ${q.answer}<br>
+    Distance: ${km.toFixed(2)} km<br>Points: +${gained}
+  `).openPopup();
 
-  const popupHtml = `
-    <div style="text-align:center; width:160px;">
-      <strong style="font-size:1rem;">${q.answer}</strong><br>
-      <img src="${q.image}" style="width:100%; height:80px; object-fit:cover; border-radius:6px; margin:6px 0;">
-      <span style="font-size:0.85rem">
-        Distance: ${km.toFixed(2)} km<br>
-        Points: +${gained}
-      </span>
-    </div>
-  `;
-  correctMarker.bindPopup(popupHtml).openPopup();
-
-  lineLayer = L.polyline([correctPos, [userGuess.lat, userGuess.lng]], {
-    color: resultColor,
-    weight: 3,
-    opacity: 0.85
-  }).addTo(map);
-
-  map.fitBounds([correctPos, [userGuess.lat, userGuess.lng]], {
-    padding: [80, 80],
-    animate: true
-  });
+  saveGuess(userGuess.lat, userGuess.lng, meters);
 
   btnNext.disabled = false;
   btnConfirmGuess.disabled = true;
 }
 
-function awardPoints(m) {
+// ✅ Finish
+function finish() {
+  resultSummary.textContent = `You scored ${points} points 🎯 Total distance: ${totalDistanceKm.toFixed(2)} km`;
+
+  heatLayer.addTo(map);
+  drawHeatLayer(); // ✅ Only once game ends
+
+  renderLeaderboard();
+  setScreen(screenResult);
+  nameEntry.style.display = "block";
+}
+
+// ✅ Heatmap
+async function renderHeatmap() {
+  const snap = await fbGetDocs(fbCollection(db, "guesses"));
+  heatData = snap.docs.map(d => d.data());
+}
+
+function drawHeatLayer() {
+  heatLayer.clearLayers();
+  heatData.forEach(({ lat, lng }) => {
+    L.circleMarker([lat, lng], {
+      radius: 22, fillColor: "#ff6b6b", fillOpacity: 0.12, stroke: false
+    }).addTo(heatLayer);
+  });
+}
+
+async function saveGuess(lat, lng, meters) {
+  await fbAddDoc(fbCollection(db, "guesses"), {
+    lat, lng, meters: Math.round(meters), ts: Date.now()
+  });
+}
+
+// ✅ Leaderboard
+async function loadLeaderboard() {
+  const q = fbQuery(fbCollection(db, "leaderboard"), fbOrderBy("points", "desc"));
+  const snap = await fbGetDocs(q);
+  return snap.docs.map(d => d.data());
+}
+
+async function renderLeaderboard() {
+  const data = await loadLeaderboard();
+  leaderboardBody.innerHTML = data.map((e, i) => `
+    <tr><td>${i + 1}</td><td>${escapeHtml(e.name || "")}</td><td>${e.points}</td><td>${e.distance.toFixed(2)}</td></tr>
+  `).join("");
+}
+
+// ✅ Utilities
+function scoreFromDistance(m) {
   if (m <= 100) return 100;
   if (m <= 250) return 70;
   if (m <= 500) return 40;
   if (m <= 1000) return 10;
   return 0;
 }
-
-btnNext.addEventListener("click", () => {
-  currentIndex < gameQuestions.length - 1 ? (currentIndex++, renderRound()) : finish();
-});
-
-function finish() {
-  resultSummary.textContent =
-    `You scored ${points} points 🎯 Total distance: ${totalDistanceKm.toFixed(2)} km`;
-
-  renderLeaderboard();
-  setScreen(screenResult);
-
-  nameEntry.style.display = "block";
+function accuracyRating(m) {
+  if (m <= 100) return { label: "🎯 PERFECT!", color: "#60d394" };
+  if (m <= 250) return { label: "✅ Very Close", color: "#76e4f7" };
+  if (m <= 500) return { label: "👍 Good Guess", color: "#8aa1ff" };
+  if (m <= 1000) return { label: "😅 Off a Bit", color: "#ffb366" };
+  return { label: "❌ Way Off", color: "#ff6b6b" };
 }
-
-// ✅ Leaderboard
-async function loadLeaderboard() {
-  try {
-    const q = fbQuery(
-      fbCollection(db, "leaderboard"),
-      fbOrderBy("points", "desc")
-    );
-    const snap = await fbGetDocs(q);
-    return snap.docs.map(d => d.data());
-  } catch (err) {
-    return [];
-  }
-}
-
-async function renderLeaderboard() {
-  const data = await loadLeaderboard();
-  leaderboardBody.innerHTML = data.map((e, i) => `
-    <tr>
-      <td>${i + 1}</td>
-      <td>${escapeHtml(e.name || "")}</td>
-      <td>${e.points ?? 0}</td>
-      <td>${(e.distance ?? 0).toFixed(2)}</td>
-    </tr>
-  `).join("");
-}
-
-btnSaveScore.addEventListener("click", async () => {
-  const name = sanitizeName(playerNameInput.value);
-
-  if (!name) return alert("Enter valid name");
-
-  try {
-    await fbAddDoc(fbCollection(db, "leaderboard"), {
-      name,
-      points,
-      distance: Number(totalDistanceKm.toFixed(2)),
-      ts: Date.now()
-    });
-
-    await renderLeaderboard();
-    alert("Saved ✅");
-  } catch {
-    alert("Error saving score ❌");
-  }
-});
-
-function sanitizeName(s) {
-  const bad = ["fuck","shit","bitch","ass","dick","cock","cunt","nigger","fag","whore","slut","sex","arse"];
-  s = (s || "").trim().slice(0, 20);
-  if (!s || bad.some(w => s.toLowerCase().includes(w))) return null;
-  return s;
-}
-
 function escapeHtml(s) {
-  return String(s).replace(/[&<>"]/g, c =>
-    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])
-  );
+  return s.replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 }
 
+// ✅ Buttons
+btnConfirmGuess.addEventListener("click", confirmGuess);
 btnClearGuess.addEventListener("click", () => {
-  if (!guessLocked) {
-    if (guessMarker) map.removeLayer(guessMarker);
+  if (!guessLocked && guessMarker) {
+    map.removeLayer(guessMarker);
+    guessMarker = null;
     userGuess = null;
     btnConfirmGuess.disabled = true;
     btnClearGuess.disabled = true;
   }
 });
-
-btnConfirmGuess.addEventListener("click", confirmGuess);
+btnNext.addEventListener("click", () =>
+  currentIndex < gameQuestions.length - 1 ? (currentIndex++, renderRound()) : finish()
+);
 btnStart.addEventListener("click", startGame);
 btnRestart.addEventListener("click", () => setScreen(screenStart));
-
-window.addEventListener("resize", () => map && map.invalidateSize(true));
+btnSaveScore.addEventListener("click", async () => {
+  const name = playerNameInput.value.trim().slice(0, 20);
+  if (!name) return alert("Enter valid name");
+  await fbAddDoc(fbCollection(db, "leaderboard"), {
+    name, points, distance: Number(totalDistanceKm.toFixed(2)), ts: Date.now()
+  });
+  renderLeaderboard();
+  alert("Saved ✅");
+});
+window.addEventListener("resize", () => map.invalidateSize());

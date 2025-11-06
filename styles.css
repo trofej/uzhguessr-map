@@ -228,6 +228,7 @@ body {
   border-radius: 50%;
   animation: pulse 1.4s infinite;
 }
+
 .pulse-wrong-dot {
   width: 10px;
   height: 10px;
@@ -236,15 +237,6 @@ body {
   position: absolute;
   left: 5px;
   top: 5px;
-}
-
-/* ✅ Round transition animation */
-.fade-screen {
-  animation: fadeIn 0.45s ease;
-}
-@keyframes fadeIn {
-  0% { opacity: 0; transform: scale(0.96); }
-  100% { opacity: 1; transform: scale(1); }
 }
 
 .pulse-dot {
@@ -265,9 +257,35 @@ body {
   animation: pulse 1.4s infinite;
 }
 
+/* “Your Guess” tooltip style */
+.leaflet-tooltip.guess-label {
+  background: rgba(0,0,0,.55);
+  color: #fff;
+  border: 1px solid rgba(255,255,255,.15);
+  border-radius: 8px;
+  padding: 2px 6px;
+  font: 600 12px/1 system-ui, sans-serif;
+  box-shadow: 0 4px 12px rgba(0,0,0,.25);
+}
+
+
+
 @keyframes pulse {
   0% { transform: scale(0.4); opacity: 0.8; }
   100% { transform: scale(1.8); opacity: 0; }
+}
+
+/* ✅ Games Played Counter Styling */
+#games-played {
+  color: var(--accent-2);
+  font-weight: 500;
+  opacity: 0;
+  animation: fadeInUp 0.5s ease forwards;
+}
+
+@keyframes fadeInUp {
+  0% { opacity: 0; transform: translateY(4px); }
+  100% { opacity: 1; transform: translateY(0); }
 }
 
 
