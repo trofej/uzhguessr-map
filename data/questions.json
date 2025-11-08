@@ -107,7 +107,7 @@
     "id": 14,
     "question": "Where is ASVZ Fluntern located?",
     "image": "images/ASVZ Fluntern.jpg",
-    "answer": "ASVZ Fluntern"
+    "answer": "ASVZ Fluntern",
     "lat": 47.383008178248815,
     "lng": 8.574164225506598
   },
@@ -115,7 +115,7 @@
     "id": 15,
     "question": "Where is Campus Irchel located?",
     "image": "images/Campus Irchel.jpg",
-    "answer": "Campus Irchel"
+    "answer": "Campus Irchel",
     "lat": 47.39748681848897,
     "lng": 8.549235708545188
   },
@@ -123,7 +123,7 @@
     "id": 16,
     "question": "Where is Platte 14 Mensa located?",
     "image": "images/Platte 14 Mensa.jpg",
-    "answer": "Platte 14 Mensa"
+    "answer": "Platte 14 Mensa",
     "lat": 47.37421432919373,
     "lng": 8.552611779097287
   },
@@ -131,7 +131,7 @@
     "id": 17,
     "question": "Where is Science Pavillion Irchel located?",
     "image": "images/Science Pavilion Irchel.jpg",
-    "answer": "Science Pavilion Irchel"
+    "answer": "Science Pavilion Irchel",
     "lat": 47.39783274597236,
     "lng": 8.54730085196444
   },
@@ -139,7 +139,7 @@
     "id": 18,
     "question": "Where is Staatsarchiv des Kantons located?",
     "image": "images/Staatsarchiv d. Kantons.jpg",
-    "answer": "Staatsarchiv des Kantons"
+    "answer": "Staatsarchiv des Kantons",
     "lat": 47.39733760776164, 
     "lng": 8.546926688253619
   },
@@ -147,7 +147,7 @@
     "id": 19,
     "question": "Where is UB Anglistik located?",
     "image": "images/UB Anglizistik.jpg",
-    "answer": "UB Anglizistik"
+    "answer": "UB Anglizistik",
     "lat": 47.372763814659244,
     "lng": 8.555512335410945
   },
@@ -155,7 +155,7 @@
     "id": 20,
     "question": "Where is UB Germanistik & Skandinavistik located?",
     "image": "images/UB Germanistik & Skandinavistik.jpg",
-    "answer": "UB Germanistik & Skandinavistik"
+    "answer": "UB Germanistik & Skandinavistik",
     "lat": 47.373310657179886,
     "lng": 8.549195238150984
   },
@@ -163,7 +163,7 @@
     "id": 21,
     "question": "Where is UB Pflanzenwissenschaften located?",
     "image": "images/UB Pflanzenwissenschaften.jpg",
-    "answer": "UB Pflanzenwissenschaften"
+    "answer": "UB Pflanzenwissenschaften",
     "lat": 47.35894402946192, 
     "lng": 8.559608594089182
   },
@@ -171,7 +171,7 @@
     "id": 22,
     "question": "Where is UB Psychologie located?",
     "image": "images/UB Psychologie.jpg",
-    "answer": "UB Psychologie"
+    "answer": "UB Psychologie",
     "lat": 47.41432083224392,
     "lng": 8.549584000671187
   },
@@ -179,7 +179,7 @@
     "id": 23,
     "question": "Where is Lichthof located?",
     "image": "images/Lichthof.jpg",
-    "answer": "Lichthof"
+    "answer": "Lichthof",
     "lat": 47.37453414235786,
     "lng": 8.548569733369488
   },
@@ -187,7 +187,7 @@
     "id": 24,
     "question": "Where is Infopoint Hauptgebäude located?",
     "image": "images/Infopoint Hauptgebäude.jpg",
-    "answer": "Infopoint Hauptgebäude"
+    "answer": "Infopoint Hauptgebäude",
     "lat": 47.37467866139877,
     "lng": 8.548933314074098
   }
