@@ -11,6 +11,11 @@ let gameQuestions = [];
 let totalDistanceKm = 0;
 let gamesPlayed = 0;
 
+// ✅ Timed mode
+let isTimedMode = false;
+let timerInterval = null;
+let timeLeft = modeSelect.value === "timed" ? 30 : 0;
+
 // ✅ Stats Document ID (Firestore)
 const STATS_DOC_ID = "gamesPlayed";
 
@@ -33,6 +38,8 @@ const leaderboardBody = document.getElementById("leaderboard-body");
 const btnConfirmGuess = document.getElementById("btn-confirm-guess");
 const btnClearGuess = document.getElementById("btn-clear-guess");
 const gamesPlayedDisplay = document.getElementById("games-played");
+const modeSelect = document.getElementById("mode-select");
+const timerDisplay = document.getElementById("timer-display");
 
 // Firebase helpers
 const db = window.db;
@@ -49,6 +56,7 @@ const fbSetDoc = window.fbSetDoc;
 // Leaflet
 let map, guessMarker, correctMarker, lineLayer;
 let heatLayer = L.layerGroup();
+let previousGuesses = L.layerGroup().addTo(heatLayer);
 let heatData = [];
 
 // ✅ Pulse icons
@@ -118,6 +126,43 @@ document.addEventListener("DOMContentLoaded", () => {
   renderHeatmap();
 });
 
+// ✅ Timer logic
+function startTimer() {
+  if (!isTimedMode) return;
+  timerDisplay.style.display = "block";
+  timeLeft = 30;
+  timerDisplay.textContent = `Time left: ${timeLeft}s`;
+  clearInterval(timerInterval);
+
+  timerInterval = setInterval(() => {
+    timeLeft--;
+    timerDisplay.textContent = `Time left: ${timeLeft}s`;
+
+    if (timeLeft <= 10) timerDisplay.style.color = "#ffb366";
+    if (timeLeft <= 5) timerDisplay.style.color = "#ff6b6b";
+
+    if (timeLeft <= 0) {
+      clearInterval(timerInterval);
+      timerDisplay.textContent = "⏰ Time's up!";
+      if (!guessLocked) {
+        if (userGuess) confirmGuess();
+        else {
+          guessLocked = true;
+          btnNext.disabled = false;
+          btnConfirmGuess.disabled = true;
+          alert("⏰ Time's up! No guess placed — 0 points this round.");
+        }
+      }
+    }
+  }, 1000);
+}
+
+function stopTimer() {
+  clearInterval(timerInterval);
+  timerDisplay.style.display = "none";
+  timerDisplay.style.color = "var(--accent-2)";
+}
+
 // ✅ UI switching
 function setScreen(s) {
   [screenStart, screenGame, screenResult].forEach(el => el.classList.remove("active"));
@@ -134,11 +179,9 @@ async function startGame() {
   incrementGamePlays();
 
   clearGuessArtifacts();
-  clearAllMapLayers(); // ✅ Critical - Full wipe
+  clearAllMapLayers();
   map.closePopup();
-
-  // ✅ Keep basemap only
-  heatLayer.remove(); // hide stored heatmap
+  heatLayer.remove();
 
   gameQuestions = [...QUESTIONS].sort(() => Math.random() - 0.5).slice(0, TOTAL_QUESTIONS);
   currentIndex = 0;
@@ -147,6 +190,9 @@ async function startGame() {
   userGuess = null;
   guessLocked = false;
   scoreIndicator.textContent = "Points: 0";
+
+  // ✅ Mode choice
+  isTimedMode = modeSelect.value === "timed";
 
   map.setView([47.3788, 8.5481], 13);
   setScreen(screenGame);
@@ -167,6 +213,8 @@ function renderRound() {
   btnConfirmGuess.disabled = true;
   btnClearGuess.disabled = true;
   btnNext.disabled = true;
+
+  if (isTimedMode) startTimer(); else stopTimer();
 }
 
 // ✅ Place guess
@@ -192,6 +240,7 @@ function placeGuess(lat, lng) {
 function confirmGuess() {
   if (!userGuess) return;
   guessLocked = true;
+  stopTimer();
 
   const q = gameQuestions[currentIndex];
   const correct = [q.lat, q.lng];
@@ -204,7 +253,26 @@ function confirmGuess() {
   scoreIndicator.textContent = `Points: ${points}`;
 
   const { label, color } = accuracyRating(meters);
-  correctMarker = L.marker(correct).addTo(map);
+
+  correctMarker = L.marker(correct, { icon: pulseIcon }).addTo(map);
+  lineLayer = L.polyline([[userGuess.lat, userGuess.lng], correct], { color, weight: 3, opacity: 0.8 }).addTo(map);
+
+  // ✅ add to persistent layer
+  L.circleMarker([userGuess.lat, userGuess.lng], {
+    radius: 6,
+    fillColor: "#ffeb3b",
+    color: "#c9a600",
+    weight: 2,
+    fillOpacity: 1
+  }).addTo(previousGuesses);
+
+  L.circleMarker(correct, {
+    radius: 6,
+    fillColor: color,
+    color: color,
+    weight: 2,
+    fillOpacity: 1
+  }).addTo(previousGuesses);
 
   correctMarker.bindPopup(`
     <strong style="background:${color};padding:4px 10px;border-radius:8px;display:inline-block;">
@@ -222,10 +290,11 @@ function confirmGuess() {
 
 // ✅ Finish
 function finish() {
+  stopTimer();
   resultSummary.textContent = `You scored ${points} points 🎯 Total distance: ${totalDistanceKm.toFixed(2)} km`;
 
   heatLayer.addTo(map);
-  drawHeatLayer(); // ✅ Only once game ends
+  drawHeatLayer();
 
   renderLeaderboard();
   setScreen(screenResult);
@@ -242,9 +311,13 @@ function drawHeatLayer() {
   heatLayer.clearLayers();
   heatData.forEach(({ lat, lng }) => {
     L.circleMarker([lat, lng], {
-      radius: 22, fillColor: "#ff6b6b", fillOpacity: 0.12, stroke: false
+      radius: 22,
+      fillColor: "#ff6b6b",
+      fillOpacity: 0.12,
+      stroke: false
     }).addTo(heatLayer);
   });
+  previousGuesses.addTo(heatLayer);
 }
 
 async function saveGuess(lat, lng, meters) {

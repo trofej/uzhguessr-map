@@ -31,6 +31,18 @@
       <h2>Ready to play?</h2>
       <p>Explore the interactive map of Zürich and place your guess for each UZH location. 10 rounds!</p>
 
+      <!-- ✅ Game mode selector -->
+      <div style="margin: 1rem 0;">
+        <label for="mode-select" style="color: var(--muted); font-weight: 500;">
+          Game Mode:
+        </label>
+        <select id="mode-select"
+                style="margin-left: 0.5rem; padding: 0.3rem 0.6rem; border-radius: 8px; background: var(--card); color: var(--text);">
+          <option value="normal">Normal (no timer)</option>
+          <option value="timed">Timed (30s per round)</option>
+        </select>
+      </div>
+
       <!-- ✅ Live game counter from Firestore -->
       <div id="games-played"
            style="margin:0.6rem 0 1.2rem; font-size:0.95rem; color:var(--muted);">
@@ -45,6 +57,13 @@
       <div class="status">
         <div id="round-indicator">Round 1/10</div>
         <div id="score-indicator">Points: 0</div>
+      </div>
+
+      <!-- ✅ Timer display -->
+      <div id="timer-display"
+           style="text-align:right; color:var(--accent-2);
+                  font-weight:600; margin-bottom:0.5rem; display:none;">
+        Time left: 30s
       </div>
 
       <figure class="photo-wrap" style="margin-bottom: 1rem;">

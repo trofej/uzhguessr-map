@@ -7,6 +7,7 @@
   --accent-2:#76e4f7;
   --danger:#ff6b6b;
   --success:#60d394;
+  --warning:#ffb366;
 }
 
 * {
@@ -61,6 +62,49 @@ body {
   gap: 1rem;
   margin-bottom: 1rem;
   color: var(--muted);
+}
+
+/* ✅ Timer styling */
+#timer-display {
+  font-size: 1rem;
+  text-align: right;
+  color: var(--accent-2);
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  transition: color 0.3s ease, transform 0.2s ease;
+}
+
+#timer-display.warning {
+  color: var(--warning);
+  transform: scale(1.05);
+}
+
+#timer-display.critical {
+  color: var(--danger);
+  animation: blink 1s infinite alternate;
+}
+
+@keyframes blink {
+  from { opacity: 1; }
+  to { opacity: 0.4; }
+}
+
+/* ✅ Game mode selector */
+#mode-select {
+  padding: 0.4rem 0.6rem;
+  border-radius: 8px;
+  background: #0e1230;
+  color: var(--text);
+  border: 1px solid rgba(255,255,255,0.08);
+  font-size: 0.95rem;
+  transition: border-color 0.3s ease, background 0.3s ease;
+}
+
+#mode-select:hover,
+#mode-select:focus {
+  outline: none;
+  border-color: var(--accent-2);
+  background: rgba(255,255,255,0.05);
 }
 
 .photo-wrap {
@@ -163,7 +207,6 @@ body {
 }
 
 /* ===== Leaderboard & Input ===== */
-
 #leaderboard table,
 #leaderboard th,
 #leaderboard td {
@@ -205,13 +248,13 @@ body {
   color: var(--accent-2);
 }
 
+/* ✅ Pulse markers */
 .pulse-marker {
   width: 20px;
   height: 20px;
   position: relative;
 }
 
-/* ✅ Correct pulsing (green) */
 .pulse-correct-ring {
   width: 20px;
   height: 20px;
@@ -220,7 +263,6 @@ body {
   animation: pulse 1.4s infinite;
 }
 
-/* ✅ Wrong pulsing (red) */
 .pulse-wrong-ring {
   width: 20px;
   height: 20px;
@@ -257,7 +299,7 @@ body {
   animation: pulse 1.4s infinite;
 }
 
-/* “Your Guess” tooltip style */
+/* “Your Guess” tooltip */
 .leaflet-tooltip.guess-label {
   background: rgba(0,0,0,.55);
   color: #fff;
@@ -268,14 +310,12 @@ body {
   box-shadow: 0 4px 12px rgba(0,0,0,.25);
 }
 
-
-
 @keyframes pulse {
   0% { transform: scale(0.4); opacity: 0.8; }
   100% { transform: scale(1.8); opacity: 0; }
 }
 
-/* ✅ Games Played Counter Styling */
+/* ✅ Games Played Counter */
 #games-played {
   color: var(--accent-2);
   font-weight: 500;
@@ -288,8 +328,7 @@ body {
   100% { opacity: 1; transform: translateY(0); }
 }
 
-
-/* Smaller markers on mobile screens */
+/* Responsive */
 @media (max-width: 640px) {
   .photo-wrap img {
     height: 240px;
