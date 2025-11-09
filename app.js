@@ -1,5 +1,6 @@
 // ✅ UZH Map Guessr – Fast + Fixed Carto Map
 const TOTAL_QUESTIONS = 10;
+const ROUND_TIME = 30; // ⏱ seconds per round in timed mode
 
 // State
 let currentIndex = 0;
@@ -14,7 +15,7 @@ let gamesPlayed = 0;
 // ✅ Timed mode
 let isTimedMode = false;
 let timerInterval = null;
-let timeLeft = modeSelect.value === "timed" ? 30 : 0;
+let timeLeft = 0;
 
 // ✅ Stats Document ID (Firestore)
 const STATS_DOC_ID = "gamesPlayed";
@@ -56,7 +57,7 @@ const fbSetDoc = window.fbSetDoc;
 // Leaflet
 let map, guessMarker, correctMarker, lineLayer;
 let heatLayer = L.layerGroup();
-let previousGuesses = L.layerGroup().addTo(heatLayer);
+let previousGuesses = L.layerGroup(); // holds all guess+correct markers for current game
 let heatData = [];
 
 // ✅ Pulse icons
@@ -95,8 +96,13 @@ async function loadGameCounter() {
   else await fbSetDoc(ref, { gamesPlayed: 0 });
   gamesPlayedDisplay.textContent = `Total Games Played: ${gamesPlayed}`;
 }
+
 async function incrementGamePlays() {
-  await fbSetDoc(fbDoc(db, "stats", STATS_DOC_ID), { gamesPlayed: fbIncrement(1) }, { merge: true });
+  await fbSetDoc(
+    fbDoc(db, "stats", STATS_DOC_ID),
+    { gamesPlayed: fbIncrement(1) },
+    { merge: true }
+  );
   gamesPlayed++;
   gamesPlayedDisplay.textContent = `Total Games Played: ${gamesPlayed}`;
 }
@@ -118,6 +124,9 @@ document.addEventListener("DOMContentLoaded", () => {
     maxZoom: 19
   }).addTo(map);
 
+  // layer for previous guesses (per game)
+  previousGuesses.addTo(map);
+
   map.on("drag", () => map.panInsideBounds(map.options.maxBounds));
   map.on("click", e => !guessLocked && placeGuess(e.latlng.lat, e.latlng.lng));
 
@@ -129,24 +138,32 @@ document.addEventListener("DOMContentLoaded", () => {
 // ✅ Timer logic
 function startTimer() {
   if (!isTimedMode) return;
-  timerDisplay.style.display = "block";
-  timeLeft = 30;
-  timerDisplay.textContent = `Time left: ${timeLeft}s`;
+
   clearInterval(timerInterval);
+  timeLeft = ROUND_TIME;
+
+  timerDisplay.style.display = "block";
+  timerDisplay.style.color = "var(--accent-2)";
+  timerDisplay.textContent = `Time left: ${timeLeft}s`;
 
   timerInterval = setInterval(() => {
     timeLeft--;
     timerDisplay.textContent = `Time left: ${timeLeft}s`;
 
-    if (timeLeft <= 10) timerDisplay.style.color = "#ffb366";
-    if (timeLeft <= 5) timerDisplay.style.color = "#ff6b6b";
+    if (timeLeft <= 10 && timeLeft > 5) {
+      timerDisplay.style.color = "#ffb366";
+    } else if (timeLeft <= 5 && timeLeft > 0) {
+      timerDisplay.style.color = "#ff6b6b";
+    }
 
     if (timeLeft <= 0) {
       clearInterval(timerInterval);
       timerDisplay.textContent = "⏰ Time's up!";
       if (!guessLocked) {
-        if (userGuess) confirmGuess();
-        else {
+        if (userGuess) {
+          confirmGuess();
+        } else {
+          // No guess placed → 0 points, allow next
           guessLocked = true;
           btnNext.disabled = false;
           btnConfirmGuess.disabled = true;
@@ -165,7 +182,9 @@ function stopTimer() {
 
 // ✅ UI switching
 function setScreen(s) {
-  [screenStart, screenGame, screenResult].forEach(el => el.classList.remove("active"));
+  [screenStart, screenGame, screenResult].forEach(el =>
+    el.classList.remove("active")
+  );
   s.classList.add("active");
   if (s === screenGame) setTimeout(() => map.invalidateSize(), 200);
 }
@@ -181,9 +200,13 @@ async function startGame() {
   clearGuessArtifacts();
   clearAllMapLayers();
   map.closePopup();
-  heatLayer.remove();
+  heatLayer = L.layerGroup(); // reset heat layer
+  previousGuesses = L.layerGroup().addTo(map); // reset previous guesses for new game
 
-  gameQuestions = [...QUESTIONS].sort(() => Math.random() - 0.5).slice(0, TOTAL_QUESTIONS);
+  gameQuestions = [...QUESTIONS]
+    .sort(() => Math.random() - 0.5)
+    .slice(0, TOTAL_QUESTIONS);
+
   currentIndex = 0;
   points = 0;
   totalDistanceKm = 0;
@@ -191,8 +214,8 @@ async function startGame() {
   guessLocked = false;
   scoreIndicator.textContent = "Points: 0";
 
-  // ✅ Mode choice
-  isTimedMode = modeSelect.value === "timed";
+  // ✅ Read mode selection
+  isTimedMode = modeSelect && modeSelect.value === "timed";
 
   map.setView([47.3788, 8.5481], 13);
   setScreen(screenGame);
@@ -214,7 +237,8 @@ function renderRound() {
   btnClearGuess.disabled = true;
   btnNext.disabled = true;
 
-  if (isTimedMode) startTimer(); else stopTimer();
+  if (isTimedMode) startTimer();
+  else stopTimer();
 }
 
 // ✅ Place guess
@@ -230,7 +254,11 @@ function placeGuess(lat, lng) {
     fillOpacity: 1
   })
     .addTo(map)
-    .bindTooltip("Your Guess", { permanent: true, direction: "top", offset: [0, -6] });
+    .bindTooltip("Your Guess", {
+      permanent: true,
+      direction: "top",
+      offset: [0, -6]
+    });
 
   btnConfirmGuess.disabled = false;
   btnClearGuess.disabled = false;
@@ -239,12 +267,16 @@ function placeGuess(lat, lng) {
 // ✅ Confirm guess
 function confirmGuess() {
   if (!userGuess) return;
+  if (guessLocked) return;
   guessLocked = true;
   stopTimer();
 
   const q = gameQuestions[currentIndex];
   const correct = [q.lat, q.lng];
-  const meters = map.distance([userGuess.lat, userGuess.lng], correct);
+  const meters = map.distance(
+    [userGuess.lat, userGuess.lng],
+    correct
+  );
   const gained = scoreFromDistance(meters);
   const km = meters / 1000;
 
@@ -254,10 +286,17 @@ function confirmGuess() {
 
   const { label, color } = accuracyRating(meters);
 
+  // Correct marker + line
   correctMarker = L.marker(correct, { icon: pulseIcon }).addTo(map);
-  lineLayer = L.polyline([[userGuess.lat, userGuess.lng], correct], { color, weight: 3, opacity: 0.8 }).addTo(map);
+  lineLayer = L.polyline(
+    [
+      [userGuess.lat, userGuess.lng],
+      correct
+    ],
+    { color, weight: 3, opacity: 0.8 }
+  ).addTo(map);
 
-  // ✅ add to persistent layer
+  // Persistent markers for this round
   L.circleMarker([userGuess.lat, userGuess.lng], {
     radius: 6,
     fillColor: "#ffeb3b",
@@ -274,13 +313,15 @@ function confirmGuess() {
     fillOpacity: 1
   }).addTo(previousGuesses);
 
-  correctMarker.bindPopup(`
+  correctMarker
+    .bindPopup(`
     <strong style="background:${color};padding:4px 10px;border-radius:8px;display:inline-block;">
       ${label}
     </strong><br><br>
     ${q.answer}<br>
     Distance: ${km.toFixed(2)} km<br>Points: +${gained}
-  `).openPopup();
+  `)
+    .openPopup();
 
   saveGuess(userGuess.lat, userGuess.lng, meters);
 
@@ -291,7 +332,8 @@ function confirmGuess() {
 // ✅ Finish
 function finish() {
   stopTimer();
-  resultSummary.textContent = `You scored ${points} points 🎯 Total distance: ${totalDistanceKm.toFixed(2)} km`;
+  resultSummary.textContent = `You scored ${points} points 🎯 Total distance: ${totalDistanceKm
+    .toFixed(2)} km`;
 
   heatLayer.addTo(map);
   drawHeatLayer();
@@ -317,27 +359,41 @@ function drawHeatLayer() {
       stroke: false
     }).addTo(heatLayer);
   });
-  previousGuesses.addTo(heatLayer);
 }
 
+// ✅ Save guess
 async function saveGuess(lat, lng, meters) {
   await fbAddDoc(fbCollection(db, "guesses"), {
-    lat, lng, meters: Math.round(meters), ts: Date.now()
+    lat,
+    lng,
+    meters: Math.round(meters),
+    ts: Date.now()
   });
 }
 
 // ✅ Leaderboard
 async function loadLeaderboard() {
-  const q = fbQuery(fbCollection(db, "leaderboard"), fbOrderBy("points", "desc"));
+  const q = fbQuery(
+    fbCollection(db, "leaderboard"),
+    fbOrderBy("points", "desc")
+  );
   const snap = await fbGetDocs(q);
   return snap.docs.map(d => d.data());
 }
 
 async function renderLeaderboard() {
   const data = await loadLeaderboard();
-  leaderboardBody.innerHTML = data.map((e, i) => `
-    <tr><td>${i + 1}</td><td>${escapeHtml(e.name || "")}</td><td>${e.points}</td><td>${e.distance.toFixed(2)}</td></tr>
-  `).join("");
+  leaderboardBody.innerHTML = data
+    .map(
+      (e, i) => `
+    <tr>
+      <td>${i + 1}</td>
+      <td>${escapeHtml(e.name || "")}</td>
+      <td>${e.points}</td>
+      <td>${e.distance.toFixed(2)}</td>
+    </tr>`
+    )
+    .join("");
 }
 
 // ✅ Utilities
@@ -348,6 +404,7 @@ function scoreFromDistance(m) {
   if (m <= 1000) return 10;
   return 0;
 }
+
 function accuracyRating(m) {
   if (m <= 100) return { label: "🎯 PERFECT!", color: "#60d394" };
   if (m <= 250) return { label: "✅ Very Close", color: "#76e4f7" };
@@ -355,12 +412,23 @@ function accuracyRating(m) {
   if (m <= 1000) return { label: "😅 Off a Bit", color: "#ffb366" };
   return { label: "❌ Way Off", color: "#ff6b6b" };
 }
+
 function escapeHtml(s) {
-  return s.replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  return s.replace(
+    /[&<>"]/g,
+    c =>
+      ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;"
+      }[c])
+  );
 }
 
 // ✅ Buttons
 btnConfirmGuess.addEventListener("click", confirmGuess);
+
 btnClearGuess.addEventListener("click", () => {
   if (!guessLocked && guessMarker) {
     map.removeLayer(guessMarker);
@@ -370,18 +438,31 @@ btnClearGuess.addEventListener("click", () => {
     btnClearGuess.disabled = true;
   }
 });
-btnNext.addEventListener("click", () =>
-  currentIndex < gameQuestions.length - 1 ? (currentIndex++, renderRound()) : finish()
-);
+
+btnNext.addEventListener("click", () => {
+  if (currentIndex < gameQuestions.length - 1) {
+    currentIndex++;
+    renderRound();
+  } else {
+    finish();
+  }
+});
+
 btnStart.addEventListener("click", startGame);
+
 btnRestart.addEventListener("click", () => setScreen(screenStart));
+
 btnSaveScore.addEventListener("click", async () => {
   const name = playerNameInput.value.trim().slice(0, 20);
   if (!name) return alert("Enter valid name");
   await fbAddDoc(fbCollection(db, "leaderboard"), {
-    name, points, distance: Number(totalDistanceKm.toFixed(2)), ts: Date.now()
+    name,
+    points,
+    distance: Number(totalDistanceKm.toFixed(2)),
+    ts: Date.now()
   });
   renderLeaderboard();
   alert("Saved ✅");
 });
+
 window.addEventListener("resize", () => map.invalidateSize());
