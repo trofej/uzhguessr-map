@@ -43,7 +43,7 @@
         </select>
       </div>
 
-      <!-- ✅ Live game counter from Firestore -->
+      <!-- ✅ Live game counter -->
       <div id="games-played"
            style="margin:0.6rem 0 1.2rem; font-size:0.95rem; color:var(--muted);">
         Total Games Played: loading...
@@ -58,6 +58,9 @@
         <div id="round-indicator">Round 1/10</div>
         <div id="score-indicator">Points: 0</div>
       </div>
+
+      <!-- ✅ Combo / streak bar -->
+      <div id="streak-bar"></div>
 
       <!-- ✅ Timer display -->
       <div id="timer-display"
@@ -88,6 +91,9 @@
       <h2>Results</h2>
       <p id="result-summary"></p>
 
+      <!-- ✅ Mini Result Map -->
+      <div id="result-map"></div>
+
       <div id="name-entry" style="margin-top:1rem;">
         <label for="player-name" style="color:var(--muted)">Enter your name for the leaderboard:</label>
         <div style="margin-top:0.5rem; display:flex; gap:0.5rem;">
@@ -102,7 +108,8 @@
 
       <div id="leaderboard" style="margin-top:1.5rem;">
         <h3>Leaderboard</h3>
-        <table id="leaderboard-table" style="width:100%; border-collapse:collapse; text-align:left;">
+        <table id="leaderboard-table"
+               style="width:100%; border-collapse:collapse; text-align:left;">
           <thead>
             <tr>
               <th>#</th><th>Name</th><th>Points</th><th>Total Distance (km)</th>

@@ -1,8 +1,8 @@
-// ✅ UZH Map Guessr – Fast + Fixed Carto Map
+// ✅ UZH Map Guessr – Enhanced Edition
 const TOTAL_QUESTIONS = 10;
-const ROUND_TIME = 30; // ⏱ seconds per round in timed mode
+const ROUND_TIME = 30; // seconds per round
 
-// State
+// Game state
 let currentIndex = 0;
 let points = 0;
 let userGuess = null;
@@ -11,16 +11,17 @@ let QUESTIONS = [];
 let gameQuestions = [];
 let totalDistanceKm = 0;
 let gamesPlayed = 0;
+let streak = 0; // ✅ combo streak
 
-// ✅ Timed mode
+// Timed mode
 let isTimedMode = false;
 let timerInterval = null;
 let timeLeft = 0;
 
-// ✅ Stats Document ID (Firestore)
+// Firestore constants
 const STATS_DOC_ID = "gamesPlayed";
 
-// UI Elements
+// UI
 const screenStart = document.getElementById("screen-start");
 const screenGame = document.getElementById("screen-game");
 const screenResult = document.getElementById("screen-result");
@@ -42,6 +43,14 @@ const gamesPlayedDisplay = document.getElementById("games-played");
 const modeSelect = document.getElementById("mode-select");
 const timerDisplay = document.getElementById("timer-display");
 
+// ✅ New streak bar element
+const streakBar = document.getElementById("streak-bar") || (() => {
+  const el = document.createElement("div");
+  el.id = "streak-bar";
+  document.querySelector(".status")?.appendChild(el);
+  return el;
+})();
+
 // Firebase helpers
 const db = window.db;
 const fbCollection = window.fbCollection;
@@ -57,34 +66,32 @@ const fbSetDoc = window.fbSetDoc;
 // Leaflet
 let map, guessMarker, correctMarker, lineLayer;
 let heatLayer = L.layerGroup();
-let previousGuesses = L.layerGroup(); // holds all guess+correct markers for current game
+let previousGuesses = L.layerGroup();
 let heatData = [];
 
-// ✅ Pulse icons
-const pulseIcon = L.divIcon({
-  className: "pulse-marker",
-  html: '<div class="pulse-ring"></div><div class="pulse-dot"></div>',
-  iconSize: [24, 24],
-  iconAnchor: [12, 12]
-});
-const pulseWrongIcon = L.divIcon({
-  className: "pulse-marker",
-  html: '<div class="pulse-wrong-ring"></div><div class="pulse-wrong-dot"></div>',
-  iconSize: [24, 24],
-  iconAnchor: [12, 12]
-});
+// ✅ Create dynamic pulse icon
+function makePulseIcon(color) {
+  return L.divIcon({
+    className: "animated-pulse-marker",
+    html: `
+      <div class="pulse-outer" style="background:${color}33; box-shadow:0 0 10px ${color}66;"></div>
+      <div class="pulse-inner" style="background:${color}; box-shadow:0 0 10px ${color};"></div>
+    `,
+    iconSize: [30, 30],
+    iconAnchor: [15, 15]
+  });
+}
 
+// Clean up
 function clearGuessArtifacts() {
   [guessMarker, correctMarker, lineLayer].forEach(m => m && map.removeLayer(m));
   guessMarker = correctMarker = lineLayer = null;
 }
 
-// ✅ Remove ALL previous markers except basemap
+// Remove non-basemap layers
 function clearAllMapLayers() {
   map.eachLayer(layer => {
-    if (!(layer instanceof L.TileLayer)) {
-      map.removeLayer(layer);
-    }
+    if (!(layer instanceof L.TileLayer)) map.removeLayer(layer);
   });
 }
 
@@ -98,8 +105,7 @@ async function loadGameCounter() {
 }
 
 async function incrementGamePlays() {
-  await fbSetDoc(
-    fbDoc(db, "stats", STATS_DOC_ID),
+  await fbSetDoc(fbDoc(db, "stats", STATS_DOC_ID),
     { gamesPlayed: fbIncrement(1) },
     { merge: true }
   );
@@ -124,9 +130,8 @@ document.addEventListener("DOMContentLoaded", () => {
     maxZoom: 19
   }).addTo(map);
 
-  // layer for previous guesses (per game)
   previousGuesses.addTo(map);
-
+  map.doubleClickZoom.disable();
   map.on("drag", () => map.panInsideBounds(map.options.maxBounds));
   map.on("click", e => !guessLocked && placeGuess(e.latlng.lat, e.latlng.lng));
 
@@ -135,10 +140,9 @@ document.addEventListener("DOMContentLoaded", () => {
   renderHeatmap();
 });
 
-// ✅ Timer logic
+// ✅ Timer
 function startTimer() {
   if (!isTimedMode) return;
-
   clearInterval(timerInterval);
   timeLeft = ROUND_TIME;
 
@@ -150,20 +154,15 @@ function startTimer() {
     timeLeft--;
     timerDisplay.textContent = `Time left: ${timeLeft}s`;
 
-    if (timeLeft <= 10 && timeLeft > 5) {
-      timerDisplay.style.color = "#ffb366";
-    } else if (timeLeft <= 5 && timeLeft > 0) {
-      timerDisplay.style.color = "#ff6b6b";
-    }
+    if (timeLeft <= 10 && timeLeft > 5) timerDisplay.style.color = "#ffb366";
+    else if (timeLeft <= 5 && timeLeft > 0) timerDisplay.style.color = "#ff6b6b";
 
     if (timeLeft <= 0) {
       clearInterval(timerInterval);
       timerDisplay.textContent = "⏰ Time's up!";
       if (!guessLocked) {
-        if (userGuess) {
-          confirmGuess();
-        } else {
-          // No guess placed → 0 points, allow next
+        if (userGuess) confirmGuess();
+        else {
           guessLocked = true;
           btnNext.disabled = false;
           btnConfirmGuess.disabled = true;
@@ -177,7 +176,6 @@ function startTimer() {
 function stopTimer() {
   clearInterval(timerInterval);
   timerDisplay.style.display = "none";
-  timerDisplay.style.color = "var(--accent-2)";
 }
 
 // ✅ UI switching
@@ -200,8 +198,8 @@ async function startGame() {
   clearGuessArtifacts();
   clearAllMapLayers();
   map.closePopup();
-  heatLayer = L.layerGroup(); // reset heat layer
-  previousGuesses = L.layerGroup().addTo(map); // reset previous guesses for new game
+  heatLayer = L.layerGroup();
+  previousGuesses = L.layerGroup().addTo(map);
 
   gameQuestions = [...QUESTIONS]
     .sort(() => Math.random() - 0.5)
@@ -212,9 +210,11 @@ async function startGame() {
   totalDistanceKm = 0;
   userGuess = null;
   guessLocked = false;
+  streak = 0;
   scoreIndicator.textContent = "Points: 0";
+  streakBar.style.width = "0%";
+  streakBar.style.opacity = 0.3;
 
-  // ✅ Read mode selection
   isTimedMode = modeSelect && modeSelect.value === "timed";
 
   map.setView([47.3788, 8.5481], 13);
@@ -254,11 +254,7 @@ function placeGuess(lat, lng) {
     fillOpacity: 1
   })
     .addTo(map)
-    .bindTooltip("Your Guess", {
-      permanent: true,
-      direction: "top",
-      offset: [0, -6]
-    });
+    .bindTooltip("Your Guess", { permanent: true, direction: "top", offset: [0, -6] });
 
   btnConfirmGuess.disabled = false;
   btnClearGuess.disabled = false;
@@ -266,65 +262,67 @@ function placeGuess(lat, lng) {
 
 // ✅ Confirm guess
 function confirmGuess() {
-  if (!userGuess) return;
-  if (guessLocked) return;
+  if (!userGuess || guessLocked) return;
   guessLocked = true;
   stopTimer();
 
   const q = gameQuestions[currentIndex];
   const correct = [q.lat, q.lng];
-  const meters = map.distance(
-    [userGuess.lat, userGuess.lng],
-    correct
-  );
+  const meters = map.distance([userGuess.lat, userGuess.lng], correct);
+
   const gained = scoreFromDistance(meters);
   const km = meters / 1000;
 
-  points += gained;
+  // ✅ Combo streak logic
+  if (gained >= 70) streak++;
+  else streak = 0;
+
+  const streakBonus = Math.min(streak * 5, 25);
+  const totalGained = gained + streakBonus;
+  points += totalGained;
   totalDistanceKm += km;
+
+  // ✅ Pop animation for score
   scoreIndicator.textContent = `Points: ${points}`;
+  scoreIndicator.classList.add("bump");
+  setTimeout(() => scoreIndicator.classList.remove("bump"), 300);
+
+  // ✅ Update streak bar
+  streakBar.style.width = `${Math.min(streak * 10, 100)}%`;
+  streakBar.style.opacity = streak > 0 ? 1 : 0.3;
 
   const { label, color } = accuracyRating(meters);
 
-  // Correct marker + line
-  correctMarker = L.marker(correct, { icon: pulseIcon }).addTo(map);
-  lineLayer = L.polyline(
-    [
-      [userGuess.lat, userGuess.lng],
-      correct
-    ],
-    { color, weight: 3, opacity: 0.8 }
-  ).addTo(map);
+  // ✅ Connection line & centering
+  lineLayer = L.polyline([[userGuess.lat, userGuess.lng], correct], {
+    color,
+    weight: 3,
+    opacity: 0.8,
+    className: "guess-line"
+  }).addTo(map);
+  map.fitBounds(L.latLngBounds([userGuess, correct]).pad(0.3), { animate: true });
 
-  // Persistent markers for this round
-  L.circleMarker([userGuess.lat, userGuess.lng], {
-    radius: 6,
-    fillColor: "#ffeb3b",
-    color: "#c9a600",
-    weight: 2,
-    fillOpacity: 1
-  }).addTo(previousGuesses);
+  // ✅ Pulse marker
+  correctMarker = L.marker(correct, { icon: makePulseIcon(color) }).addTo(previousGuesses);
 
-  L.circleMarker(correct, {
-    radius: 6,
-    fillColor: color,
-    color: color,
-    weight: 2,
-    fillOpacity: 1
-  }).addTo(previousGuesses);
+  // ✅ Glow feedback
+  const mapEl = map.getContainer();
+  mapEl.classList.add("flash");
+  setTimeout(() => mapEl.classList.remove("flash"), 500);
 
-  correctMarker
-    .bindPopup(`
+  // ✅ Cleanup & popup
+  if (guessMarker) map.removeLayer(guessMarker);
+
+  correctMarker.bindPopup(`
     <strong style="background:${color};padding:4px 10px;border-radius:8px;display:inline-block;">
       ${label}
     </strong><br><br>
     ${q.answer}<br>
-    Distance: ${km.toFixed(2)} km<br>Points: +${gained}
-  `)
-    .openPopup();
+    Distance: ${km.toFixed(2)} km<br>
+    Points: +${totalGained} (Base ${gained} + Streak ${streakBonus})
+  `).openPopup();
 
   saveGuess(userGuess.lat, userGuess.lng, meters);
-
   btnNext.disabled = false;
   btnConfirmGuess.disabled = true;
 }
@@ -332,15 +330,34 @@ function confirmGuess() {
 // ✅ Finish
 function finish() {
   stopTimer();
-  resultSummary.textContent = `You scored ${points} points 🎯 Total distance: ${totalDistanceKm
-    .toFixed(2)} km`;
+  resultSummary.textContent = `You scored ${points} points 🎯 Total distance: ${totalDistanceKm.toFixed(2)} km`;
 
   heatLayer.addTo(map);
   drawHeatLayer();
-
   renderLeaderboard();
   setScreen(screenResult);
   nameEntry.style.display = "block";
+
+  // ✅ Mini result map
+  setTimeout(() => {
+    const resultMapEl = document.getElementById("result-map");
+    if (!resultMapEl) return;
+    const resultMap = L.map("result-map", {
+      center: [47.3788, 8.5481],
+      zoom: 13,
+      zoomControl: false,
+      attributionControl: false
+    });
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png", {
+      subdomains: "abcd", maxZoom: 19
+    }).addTo(resultMap);
+    gameQuestions.forEach(q => {
+      L.circleMarker([q.lat, q.lng], {
+        radius: 7, color: "#76e4f7", fillColor: "#76e4f7", fillOpacity: 0.9
+      }).addTo(resultMap);
+    });
+    resultMap.fitBounds(L.latLngBounds(gameQuestions.map(q => [q.lat, q.lng])).pad(0.2));
+  }, 400);
 }
 
 // ✅ Heatmap
@@ -373,10 +390,7 @@ async function saveGuess(lat, lng, meters) {
 
 // ✅ Leaderboard
 async function loadLeaderboard() {
-  const q = fbQuery(
-    fbCollection(db, "leaderboard"),
-    fbOrderBy("points", "desc")
-  );
+  const q = fbQuery(fbCollection(db, "leaderboard"), fbOrderBy("points", "desc"));
   const snap = await fbGetDocs(q);
   return snap.docs.map(d => d.data());
 }
@@ -386,12 +400,12 @@ async function renderLeaderboard() {
   leaderboardBody.innerHTML = data
     .map(
       (e, i) => `
-    <tr>
-      <td>${i + 1}</td>
-      <td>${escapeHtml(e.name || "")}</td>
-      <td>${e.points}</td>
-      <td>${e.distance.toFixed(2)}</td>
-    </tr>`
+      <tr>
+        <td>${i + 1}</td>
+        <td>${escapeHtml(e.name || "")}</td>
+        <td>${e.points}</td>
+        <td>${e.distance.toFixed(2)}</td>
+      </tr>`
     )
     .join("");
 }
@@ -414,21 +428,13 @@ function accuracyRating(m) {
 }
 
 function escapeHtml(s) {
-  return s.replace(
-    /[&<>"]/g,
-    c =>
-      ({
-        "&": "&amp;",
-        "<": "&lt;",
-        ">": "&gt;",
-        '"': "&quot;"
-      }[c])
+  return s.replace(/[&<>"]/g, c =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])
   );
 }
 
 // ✅ Buttons
 btnConfirmGuess.addEventListener("click", confirmGuess);
-
 btnClearGuess.addEventListener("click", () => {
   if (!guessLocked && guessMarker) {
     map.removeLayer(guessMarker);
@@ -438,7 +444,6 @@ btnClearGuess.addEventListener("click", () => {
     btnClearGuess.disabled = true;
   }
 });
-
 btnNext.addEventListener("click", () => {
   if (currentIndex < gameQuestions.length - 1) {
     currentIndex++;
@@ -447,11 +452,8 @@ btnNext.addEventListener("click", () => {
     finish();
   }
 });
-
 btnStart.addEventListener("click", startGame);
-
 btnRestart.addEventListener("click", () => setScreen(screenStart));
-
 btnSaveScore.addEventListener("click", async () => {
   const name = playerNameInput.value.trim().slice(0, 20);
   if (!name) return alert("Enter valid name");
@@ -464,5 +466,4 @@ btnSaveScore.addEventListener("click", async () => {
   renderLeaderboard();
   alert("Saved ✅");
 });
-
 window.addEventListener("resize", () => map.invalidateSize());
