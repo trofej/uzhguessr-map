@@ -242,24 +242,25 @@ function renderRound() {
   startTimer();
 }
 
-// --- 💡 Hint System ---
+// --- 💡 Hint System (uses hint from data/questions.json)
 if (btnHint) {
   btnHint.addEventListener("click", () => {
     if (hintUsed || guessLocked) return;
     hintUsed = true;
     btnHint.disabled = true;
+
+    // Deduct cost: -5 points or -5 seconds
     if (points >= 5) points -= 5;
     else if (timeLeft > 5) timeLeft -= 5;
 
     const q = gameQuestions[currentIndex];
-    const hints = [
-      `💡 Hint: It's around ${q.answer.includes("Irchel") ? "Irchelpark 🌳" : "UZH Zentrum 🏛️"}.`,
-      `💡 Hint: Think of ${q.answer.includes("Careum") ? "medical faculty 🏥" : "main campus 🏫"}.`,
-      `💡 Hint: Somewhere near a tram stop 🚋.`
-    ];
-    const randomHint = hints[Math.floor(Math.random() * hints.length)];
-    hintText.textContent = randomHint;
+    const hintMessage = q.hint || "No hint available for this location.";
+
+    // Display the hint from JSON
+    hintText.textContent = `💡 Hint: ${hintMessage}`;
     hintText.style.display = "block";
+
+    // Update the points display
     scoreIndicator.textContent = `Points: ${points}`;
   });
 }
