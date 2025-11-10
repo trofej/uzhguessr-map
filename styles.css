@@ -404,23 +404,162 @@ body {
 }
 .map-legend .legend-item:last-child { margin-bottom: 0; }
 
-/* ✅ Responsive */
-@media (max-width: 640px) {
-  .container { padding: 1rem; }
-  .photo-wrap img { height: 240px; }
-  #map, #result-map { height: 280px; }
-  h1 { font-size: 1.6rem; }
+/* ✅ Responsive Enhancements */
 
-  #leaderboard-start h3 { text-align: center; font-size: 1.05rem; }
-  #leaderboard-start table { font-size: 0.85rem; }
-
-  #streak-indicator { font-size: 0.9rem; }
-  .map-legend {
-    font-size: 0.75rem;
-    padding: 8px 10px;
+/* --- Tablet and smaller laptops (≤1024px) --- */
+@media (max-width: 1024px) {
+  .container {
+    padding: 1.2rem;
   }
+  .header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+  .header h1 {
+    font-size: 1.6rem;
+  }
+  #map, #result-map {
+    height: 50vh;
+  }
+  .photo-wrap img {
+    height: 50vh;
+  }
+  .controls {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+}
+
+/* --- Mobile devices (≤768px) --- */
+@media (max-width: 768px) {
+  body, html {
+    font-size: 15px;
+    overflow-x: hidden;
+  }
+
+  .container {
+    padding: 0.8rem;
+    max-width: 100%;
+  }
+
+  .header {
+    flex-direction: column;
+    align-items: flex-start;
+    text-align: left;
+    gap: 0.4rem;
+  }
+
+  .header h1 {
+    font-size: 1.4rem;
+    margin-bottom: 0.2rem;
+  }
+
+  /* Map and photo scale dynamically */
+  #map, #result-map {
+    height: 45vh;
+    border-radius: 12px;
+  }
+
+  .photo-wrap img {
+    max-width: 100%;
+    height: auto;
+    max-height: 45vh;
+    border-radius: 12px;
+  }
+
+  /* Button layout */
+  .controls {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+  }
+
+  .btn {
+    width: 100%;
+    font-size: 0.95rem;
+    padding: 0.6rem 1rem;
+  }
+
+  #question-text {
+    font-size: 1rem;
+    margin-top: 0.4rem;
+  }
+
+  #streak-indicator {
+    font-size: 0.9rem;
+  }
+
+  #timer-display {
+    font-size: 0.9rem;
+    text-align: center;
+    margin-bottom: 0.5rem;
+  }
+
+  #leaderboard-start h3,
+  #leaderboard h3 {
+    text-align: center;
+    font-size: 1.05rem;
+  }
+
+  #leaderboard-start table,
+  #leaderboard table {
+    font-size: 0.8rem;
+  }
+
+  #leaderboard-start th,
+  #leaderboard-start td,
+  #leaderboard th,
+  #leaderboard td {
+    padding: 0.3rem 0.4rem;
+  }
+}
+
+/* --- Small phones (≤480px) --- */
+@media (max-width: 480px) {
+  html, body {
+    font-size: 14px;
+  }
+
+  .container {
+    padding: 0.6rem;
+  }
+
+  .header h1 {
+    font-size: 1.2rem;
+  }
+
+  #map, #result-map {
+    height: 42vh;
+  }
+
+  .photo-wrap img {
+    max-height: 40vh;
+  }
+
+  #question-text {
+    font-size: 0.9rem;
+  }
+
+  #score-indicator,
+  #round-indicator,
+  #timer-display,
+  #hint-text {
+    font-size: 0.85rem;
+  }
+
+  .btn {
+    font-size: 0.9rem;
+    padding: 0.5rem 0.8rem;
+  }
+
+  .map-legend {
+    font-size: 0.7rem;
+    padding: 6px 8px;
+  }
+
   .map-legend .legend-color {
-    width: 12px;
-    height: 12px;
+    width: 10px;
+    height: 10px;
   }
 }
