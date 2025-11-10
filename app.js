@@ -1,4 +1,4 @@
-// ✅ UZH Map Guessr – Timed Mode Edition (30s per round + Combo Visuals + Hint System + Timeout Reveal)
+// ✅ UZH Map Guessr – Timed Mode Edition + Sound Effects
 const TOTAL_QUESTIONS = 10;
 const ROUND_TIME = 30;
 
@@ -39,6 +39,32 @@ const streakIndicator = document.getElementById("streak-indicator");
 // 🆕 Hint system elements
 const btnHint = document.getElementById("btn-hint");
 const hintText = document.getElementById("hint-text");
+
+// 🆕 Sound elements
+const soundCorrect = document.getElementById("sound-correct");
+const soundWrong = document.getElementById("sound-wrong");
+const soundStreak = document.getElementById("sound-streak");
+const btnSound = document.getElementById("btn-sound");
+
+let soundEnabled = true;
+if (btnSound) {
+  btnSound.addEventListener("click", () => {
+    soundEnabled = !soundEnabled;
+    btnSound.textContent = soundEnabled ? "🔊 Sound On" : "🔇 Sound Off";
+  });
+}
+
+function playSound(name) {
+  if (!soundEnabled) return;
+  let s;
+  if (name === "correct") s = soundCorrect;
+  else if (name === "wrong") s = soundWrong;
+  else if (name === "streak") s = soundStreak;
+  if (!s) return;
+  s.currentTime = 0;
+  s.volume = 0.35;
+  s.play().catch(() => {});
+}
 
 // Firebase helpers
 const db = window.db;
@@ -148,7 +174,6 @@ function handleTimeout() {
   const q = gameQuestions[currentIndex];
   const correct = [q.lat, q.lng];
 
-  // Show correct location only
   clearGuessArtifacts();
   correctMarker = L.marker(correct, { icon: makePulseIcon("#ff6b6b") }).addTo(previousGuesses);
   correctMarker.bindPopup(`<strong>⏰ Time's up!</strong><br>${q.answer}<br>+0 points`).openPopup();
@@ -160,9 +185,10 @@ function handleTimeout() {
     distance: null
   });
 
-  // Reset streak because player didn’t guess
   streak = 0;
   updateStreakUI(0);
+
+  playSound("wrong"); // 🆕 play timeout "wrong" sound
 
   btnConfirmGuess.disabled = true;
   btnClearGuess.disabled = true;
@@ -222,8 +248,6 @@ if (btnHint) {
     if (hintUsed || guessLocked) return;
     hintUsed = true;
     btnHint.disabled = true;
-
-    // Deduct cost
     if (points >= 5) points -= 5;
     else if (timeLeft > 5) timeLeft -= 5;
 
@@ -286,6 +310,10 @@ function confirmGuess() {
     `<strong style="background:${color};padding:4px 10px;border-radius:8px;">${label}</strong><br>${q.answer}<br>Distance: ${km.toFixed(2)} km`
   ).openPopup();
 
+  // 🆕 Play sound feedback
+  if (gained >= 40) playSound("correct");
+  else playSound("wrong");
+
   currentGameGuesses.push({
     question: q.answer, lat: userGuess.lat, lng: userGuess.lng,
     correctLat: q.lat, correctLng: q.lng, distance: Math.round(meters)
@@ -309,12 +337,14 @@ function updateStreakUI(newStreak, oldStreak = 0) {
     streakIndicator.classList.add("flash");
     streakBar.classList.add("glow");
     showComboBadge(newStreak);
+    playSound("streak"); // 🆕 play streak sound
     setTimeout(() => {
       streakIndicator.classList.remove("flash");
       streakBar.classList.remove("glow");
     }, 800);
   }
 }
+
 
 function showComboBadge(value) {
   const badge = document.createElement("div");

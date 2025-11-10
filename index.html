@@ -14,7 +14,7 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-  <!-- Inline backup styles -->
+  <!-- Inline backup styles (same as before, unchanged) -->
   <style>
     #map, #result-map {
       width: 100%;
@@ -30,7 +30,6 @@
     .bump { animation: pop 0.3s ease; }
     @keyframes pop { 0%{transform:scale(1);} 50%{transform:scale(1.15);} 100%{transform:scale(1);} }
 
-    /* 🔥 Combo visual animation */
     @keyframes flamePop {
       0% { transform: scale(0.8); opacity: 0; }
       20% { transform: scale(1.3); opacity: 1; }
@@ -68,6 +67,8 @@
   <main class="container">
     <header class="header">
       <h1>UZH Map Guessr</h1>
+      <!-- 🔇 Sound toggle button -->
+      <button id="btn-sound" class="btn" style="margin-left:1rem;">🔊 Sound On</button>
     </header>
 
     <!-- ✅ START SCREEN -->
@@ -169,6 +170,11 @@
       <button id="btn-restart" class="btn primary">Play Again</button>
     </section>
   </main>
+
+  <!-- 🎧 SOUND EFFECTS -->
+  <audio id="sound-correct" src="sounds/correct.mp3" preload="auto"></audio>
+  <audio id="sound-wrong" src="sounds/wrong.mp3" preload="auto"></audio>
+  <audio id="sound-streak" src="sounds/streak.mp3" preload="auto"></audio>
 
   <!-- ✅ Firebase SDK -->
   <script type="module">
