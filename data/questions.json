@@ -5,7 +5,8 @@
     "image": "images/BotanischerGarten.jpg",
     "answer": "Botanischer Garten",
     "lat": 47.358633,
-    "lng": 8.561136
+    "lng": 8.561136,
+    "hint": "Located near the Zürichberg and not far from the Zoo."
   },
   {
     "id": 2,
@@ -13,7 +14,8 @@
     "image": "images/Hauptgebäude.jpg",
     "answer": "UZH Hauptgebäude",
     "lat": 47.374567,
-    "lng": 8.548583
+    "lng": 8.548583,
+    "hint": "Opposite the ETH Main Building, near Polybahn."
   },
   {
     "id": 3,
@@ -21,7 +23,8 @@
     "image": "images/UBErziehungswissenschaften.jpg",
     "answer": "UB Erziehungswissenschaften",
     "lat": 47.370957,
-    "lng": 8.554132
+    "lng": 8.554132,
+    "hint": "Close to Rämistrasse and the Faculty of Arts and Social Sciences."
   },
   {
     "id": 4,
@@ -29,7 +32,8 @@
     "image": "images/Careum.jpg",
     "answer": "Careum",
     "lat": 47.375338,
-    "lng": 8.553478
+    "lng": 8.553478,
+    "hint": "Located next to the University Hospital (USZ) and the Nursing Science Institute."
   },
   {
     "id": 5,
@@ -37,7 +41,8 @@
     "image": "images/UBBetriebswirtschaftslehre.jpg",
     "answer": "UB Betriebswirtschaftslehre",
     "lat": 47.374181,
-    "lng": 8.552657
+    "lng": 8.552657,
+    "hint": "Near the main tram stop 'ETH/Universitätsspital'."
   },
   {
     "id": 6,
@@ -45,7 +50,8 @@
     "image": "images/Forum (2031).jpg",
     "answer": "Forum (2031)",
     "lat": 47.374263,
-    "lng": 8.551067
+    "lng": 8.551067,
+    "hint": "Located between the main building and the economics library."
   },
   {
     "id": 7,
@@ -53,7 +59,8 @@
     "image": "images/Irchelpark.jpg",
     "answer": "Irchelpark",
     "lat": 47.398175,
-    "lng": 8.544547
+    "lng": 8.544547,
+    "hint": "A large green park next to Campus Irchel."
   },
   {
     "id": 8,
@@ -61,7 +68,8 @@
     "image": "images/Asien-Orient Institut.jpg",
     "answer": "Asien-Orient Institut",
     "lat": 47.372564,
-    "lng": 8.551097
+    "lng": 8.551097,
+    "hint": "Near the main law building and close to Rämistrasse."
   },
   {
     "id": 9,
@@ -69,7 +77,8 @@
     "image": "images/Rechtswissenschaftliche Bibliothek.jpg",
     "answer": "Rechtswissenschaftliche Bibliothek",
     "lat": 47.373365,
-    "lng": 8.550783
+    "lng": 8.550783,
+    "hint": "Part of the Faculty of Law, located behind the main building."
   },
   {
     "id": 10,
@@ -77,7 +86,8 @@
     "image": "images/Zentrum für Zahnmedizin.jpg",
     "answer": "Zentrum für Zahnmedizin",
     "lat": 47.374582,
-    "lng": 8.552934
+    "lng": 8.552934,
+    "hint": "Close to Careum and the University Hospital area."
   },
   {
     "id": 11,
@@ -85,7 +95,8 @@
     "image": "images/Alter Botanischer Garten.jpg",
     "answer": "Alter Botanischer Garten",
     "lat": 47.371181,
-    "lng": 8.533687
+    "lng": 8.533687,
+    "hint": "Hidden oasis near Bahnhof Selnau and the city center."
   },
   {
     "id": 12,
@@ -93,7 +104,8 @@
     "image": "images/Theologisches Seminar Kirchgasse.jpg",
     "answer": "Theologisches Seminar Kirchgasse",
     "lat": 47.370057,
-    "lng": 8.544519
+    "lng": 8.544519,
+    "hint": "Located in the Niederdorf old town, near Grossmünster."
   },
   {
     "id": 13,
@@ -101,15 +113,17 @@
     "image": "images/Universitätsspital.jpg",
     "answer": "Universitätsspital",
     "lat": 47.376623,
-    "lng": 8.549168
+    "lng": 8.549168,
+    "hint": "Next to the tram stop 'ETH/Universitätsspital'."
   },
-   {
+  {
     "id": 14,
     "question": "Where is ASVZ Fluntern located?",
     "image": "images/ASVZ Fluntern.jpg",
     "answer": "ASVZ Fluntern",
     "lat": 47.383008178248815,
-    "lng": 8.574164225506598
+    "lng": 8.574164225506598,
+    "hint": "At the eastern edge of Zürichberg, near the Zoo."
   },
   {
     "id": 15,
@@ -117,7 +131,8 @@
     "image": "images/Campus Irchel.jpg",
     "answer": "Campus Irchel",
     "lat": 47.39748681848897,
-    "lng": 8.549235708545188
+    "lng": 8.549235708545188,
+    "hint": "Main UZH science campus, surrounded by Irchelpark."
   },
   {
     "id": 16,
@@ -125,7 +140,8 @@
     "image": "images/Platte 14 Mensa.jpg",
     "answer": "Platte 14 Mensa",
     "lat": 47.37421432919373,
-    "lng": 8.552611779097287
+    "lng": 8.552611779097287,
+    "hint": "Popular student cafeteria close to the economics buildings."
   },
   {
     "id": 17,
@@ -133,15 +149,17 @@
     "image": "images/Science Pavilion Irchel.jpg",
     "answer": "Science Pavilion Irchel",
     "lat": 47.39783274597236,
-    "lng": 8.54730085196444
+    "lng": 8.54730085196444,
+    "hint": "Within Campus Irchel, near the physics and biology departments."
   },
   {
     "id": 18,
     "question": "Where is Staatsarchiv des Kantons located?",
     "image": "images/Staatsarchiv d. Kantons.jpg",
     "answer": "Staatsarchiv des Kantons",
-    "lat": 47.39733760776164, 
-    "lng": 8.546926688253619
+    "lat": 47.39733760776164,
+    "lng": 8.546926688253619,
+    "hint": "Located near Irchelpark, in the same area as Campus Irchel."
   },
   {
     "id": 19,
@@ -149,7 +167,8 @@
     "image": "images/UB Anglizistik.jpg",
     "answer": "UB Anglizistik",
     "lat": 47.372763814659244,
-    "lng": 8.555512335410945
+    "lng": 8.555512335410945,
+    "hint": "Found near the Faculty of Arts on Schönberggasse."
   },
   {
     "id": 20,
@@ -157,15 +176,17 @@
     "image": "images/UB Germanistik & Skandinavistik.jpg",
     "answer": "UB Germanistik & Skandinavistik",
     "lat": 47.373310657179886,
-    "lng": 8.549195238150984
+    "lng": 8.549195238150984,
+    "hint": "In the same block as the Law and Theology libraries."
   },
   {
     "id": 21,
     "question": "Where is UB Pflanzenwissenschaften located?",
     "image": "images/UB Pflanzenwissenschaften.jpg",
     "answer": "UB Pflanzenwissenschaften",
-    "lat": 47.35894402946192, 
-    "lng": 8.559608594089182
+    "lat": 47.35894402946192,
+    "lng": 8.559608594089182,
+    "hint": "Located at the Botanical Garden campus near Zollikerstrasse."
   },
   {
     "id": 22,
@@ -173,7 +194,8 @@
     "image": "images/UB Psychologie.jpg",
     "answer": "UB Psychologie",
     "lat": 47.41432083224392,
-    "lng": 8.549584000671187
+    "lng": 8.549584000671187,
+    "hint": "Situated far north in Oerlikon, near the Faculty of Psychology."
   },
   {
     "id": 23,
@@ -181,7 +203,8 @@
     "image": "images/Lichthof.jpg",
     "answer": "Lichthof",
     "lat": 47.37453414235786,
-    "lng": 8.548569733369488
+    "lng": 8.548569733369488,
+    "hint": "Inside the UZH Main Building — a central exhibition hall."
   },
   {
     "id": 24,
@@ -189,6 +212,7 @@
     "image": "images/Infopoint Hauptgebäude.jpg",
     "answer": "Infopoint Hauptgebäude",
     "lat": 47.37467866139877,
-    "lng": 8.548933314074098
+    "lng": 8.548933314074098,
+    "hint": "Right inside the main entrance of the UZH Hauptgebäude."
   }
 ]

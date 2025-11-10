@@ -1,4 +1,4 @@
-// ✅ UZH Map Guessr – Timed Mode Edition (30s per round + Combo Visuals)
+// ✅ UZH Map Guessr – Timed Mode Edition (30s per round + Combo Visuals + Hint System + Timeout Reveal)
 const TOTAL_QUESTIONS = 10;
 const ROUND_TIME = 30;
 
@@ -9,6 +9,7 @@ let currentGameGuesses = [], scoreSaved = false;
 let lastSavedName = localStorage.getItem("lastSavedName") || null;
 
 let timerInterval = null, timeLeft = 0;
+let hintUsed = false;
 const STATS_DOC_ID = "gamesPlayed";
 
 // UI
@@ -34,6 +35,10 @@ const gamesPlayedDisplay = document.getElementById("games-played");
 const timerDisplay = document.getElementById("timer-display");
 const streakBar = document.getElementById("streak-bar");
 const streakIndicator = document.getElementById("streak-indicator");
+
+// 🆕 Hint system elements
+const btnHint = document.getElementById("btn-hint");
+const hintText = document.getElementById("hint-text");
 
 // Firebase helpers
 const db = window.db;
@@ -125,7 +130,7 @@ function startTimer() {
     if (timeLeft <= 0) {
       clearInterval(timerInterval);
       timerDisplay.textContent = "⏰ Time's up!";
-      if (!guessLocked) confirmGuess();
+      if (!guessLocked) handleTimeout();
     }
   }, 1000);
 }
@@ -133,6 +138,35 @@ function stopTimer() {
   clearInterval(timerInterval);
   timerDisplay.style.display = "none";
   timerDisplay.className = "";
+}
+
+// --- Handle Timeout ---
+function handleTimeout() {
+  guessLocked = true;
+  stopTimer();
+
+  const q = gameQuestions[currentIndex];
+  const correct = [q.lat, q.lng];
+
+  // Show correct location only
+  clearGuessArtifacts();
+  correctMarker = L.marker(correct, { icon: makePulseIcon("#ff6b6b") }).addTo(previousGuesses);
+  correctMarker.bindPopup(`<strong>⏰ Time's up!</strong><br>${q.answer}<br>+0 points`).openPopup();
+
+  currentGameGuesses.push({
+    question: q.answer,
+    lat: null, lng: null,
+    correctLat: q.lat, correctLng: q.lng,
+    distance: null
+  });
+
+  // Reset streak because player didn’t guess
+  streak = 0;
+  updateStreakUI(0);
+
+  btnConfirmGuess.disabled = true;
+  btnClearGuess.disabled = true;
+  btnNext.disabled = false;
 }
 
 // --- UI Switch ---
@@ -158,7 +192,7 @@ async function startGame() {
   currentGameGuesses = []; scoreSaved = false;
   playerNameInput.disabled = false; btnSaveScore.disabled = false;
 
-  updateStreakUI(0); // reset streak visuals
+  updateStreakUI(0);
   map.setView([47.3788, 8.5481], 13);
   setScreen(screenGame);
   renderRound();
@@ -169,12 +203,41 @@ function renderRound() {
   clearGuessArtifacts();
   guessLocked = false;
   userGuess = null;
+  hintUsed = false;
+
+  if (hintText) hintText.style.display = "none";
+  if (btnHint) btnHint.disabled = false;
+
   const q = gameQuestions[currentIndex];
   questionText.textContent = `Where is: ${q.answer}?`;
   roundIndicator.textContent = `Round ${currentIndex + 1}/${gameQuestions.length}`;
   questionImage.src = q.image;
   btnConfirmGuess.disabled = btnClearGuess.disabled = btnNext.disabled = true;
   startTimer();
+}
+
+// --- 💡 Hint System ---
+if (btnHint) {
+  btnHint.addEventListener("click", () => {
+    if (hintUsed || guessLocked) return;
+    hintUsed = true;
+    btnHint.disabled = true;
+
+    // Deduct cost
+    if (points >= 5) points -= 5;
+    else if (timeLeft > 5) timeLeft -= 5;
+
+    const q = gameQuestions[currentIndex];
+    const hints = [
+      `💡 Hint: It's around ${q.answer.includes("Irchel") ? "Irchelpark 🌳" : "UZH Zentrum 🏛️"}.`,
+      `💡 Hint: Think of ${q.answer.includes("Careum") ? "medical faculty 🏥" : "main campus 🏫"}.`,
+      `💡 Hint: Somewhere near a tram stop 🚋.`
+    ];
+    const randomHint = hints[Math.floor(Math.random() * hints.length)];
+    hintText.textContent = randomHint;
+    hintText.style.display = "block";
+    scoreIndicator.textContent = `Points: ${points}`;
+  });
 }
 
 // --- Guess ---
@@ -204,7 +267,6 @@ function confirmGuess() {
   if (gained >= 70) streak++;
   else streak = 0;
 
-  // 🔥 Combo visuals
   updateStreakUI(streak, prevStreak);
 
   const streakBonus = Math.min(streak * 5, 25);
@@ -268,6 +330,7 @@ function showComboBadge(value) {
   streakBar.parentElement.appendChild(badge);
   setTimeout(() => badge.remove(), 1000);
 }
+
 
 // --- Finish ---
 async function finish() {
