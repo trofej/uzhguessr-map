@@ -1,4 +1,4 @@
-// ✅ UZH Map Guessr – Enhanced Edition + Fixed Result Legend Visibility
+// ✅ UZH Map Guessr – Timed Mode Edition (30s per round + Combo Visuals)
 const TOTAL_QUESTIONS = 10;
 const ROUND_TIME = 30;
 
@@ -8,7 +8,7 @@ let totalDistanceKm = 0, gamesPlayed = 0, streak = 0;
 let currentGameGuesses = [], scoreSaved = false;
 let lastSavedName = localStorage.getItem("lastSavedName") || null;
 
-let isTimedMode = false, timerInterval = null, timeLeft = 0;
+let timerInterval = null, timeLeft = 0;
 const STATS_DOC_ID = "gamesPlayed";
 
 // UI
@@ -27,11 +27,13 @@ const nameEntry = document.getElementById("name-entry");
 const playerNameInput = document.getElementById("player-name");
 const btnSaveScore = document.getElementById("btn-save-score");
 const leaderboardBody = document.getElementById("leaderboard-body");
+const leaderboardBodyStart = document.getElementById("leaderboard-body-start");
 const btnConfirmGuess = document.getElementById("btn-confirm-guess");
 const btnClearGuess = document.getElementById("btn-clear-guess");
 const gamesPlayedDisplay = document.getElementById("games-played");
-const modeSelect = document.getElementById("mode-select");
 const timerDisplay = document.getElementById("timer-display");
+const streakBar = document.getElementById("streak-bar");
+const streakIndicator = document.getElementById("streak-indicator");
 
 // Firebase helpers
 const db = window.db;
@@ -102,11 +104,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
   loadGameCounter();
   renderLeaderboard();
+  renderStartLeaderboard();
 });
 
 // --- Timer ---
 function startTimer() {
-  if (!isTimedMode) return;
   clearInterval(timerInterval);
   timeLeft = ROUND_TIME;
   timerDisplay.style.display = "block";
@@ -115,6 +117,11 @@ function startTimer() {
   timerInterval = setInterval(() => {
     timeLeft--;
     timerDisplay.textContent = `Time left: ${timeLeft}s`;
+
+    if (timeLeft <= 10 && timeLeft > 5) timerDisplay.className = "warning";
+    else if (timeLeft <= 5) timerDisplay.className = "critical";
+    else timerDisplay.className = "";
+
     if (timeLeft <= 0) {
       clearInterval(timerInterval);
       timerDisplay.textContent = "⏰ Time's up!";
@@ -122,7 +129,11 @@ function startTimer() {
     }
   }, 1000);
 }
-function stopTimer() { clearInterval(timerInterval); timerDisplay.style.display = "none"; }
+function stopTimer() {
+  clearInterval(timerInterval);
+  timerDisplay.style.display = "none";
+  timerDisplay.className = "";
+}
 
 // --- UI Switch ---
 function setScreen(s) {
@@ -146,7 +157,8 @@ async function startGame() {
   currentIndex = 0; points = 0; totalDistanceKm = 0; streak = 0;
   currentGameGuesses = []; scoreSaved = false;
   playerNameInput.disabled = false; btnSaveScore.disabled = false;
-  isTimedMode = modeSelect && modeSelect.value === "timed";
+
+  updateStreakUI(0); // reset streak visuals
   map.setView([47.3788, 8.5481], 13);
   setScreen(screenGame);
   renderRound();
@@ -154,13 +166,15 @@ async function startGame() {
 
 // --- Round ---
 function renderRound() {
-  clearGuessArtifacts(); guessLocked = false; userGuess = null;
+  clearGuessArtifacts();
+  guessLocked = false;
+  userGuess = null;
   const q = gameQuestions[currentIndex];
   questionText.textContent = `Where is: ${q.answer}?`;
   roundIndicator.textContent = `Round ${currentIndex + 1}/${gameQuestions.length}`;
   questionImage.src = q.image;
   btnConfirmGuess.disabled = btnClearGuess.disabled = btnNext.disabled = true;
-  isTimedMode ? startTimer() : stopTimer();
+  startTimer();
 }
 
 // --- Guess ---
@@ -177,17 +191,26 @@ function placeGuess(lat, lng) {
 // --- Confirm Guess ---
 function confirmGuess() {
   if (!userGuess || guessLocked) return;
-  guessLocked = true; stopTimer();
+  guessLocked = true;
+  stopTimer();
 
   const q = gameQuestions[currentIndex];
   const correct = [q.lat, q.lng];
   const meters = map.distance([userGuess.lat, userGuess.lng], correct);
   const gained = scoreFromDistance(meters);
   const km = meters / 1000;
-  if (gained >= 70) streak++; else streak = 0;
+
+  const prevStreak = streak;
+  if (gained >= 70) streak++;
+  else streak = 0;
+
+  // 🔥 Combo visuals
+  updateStreakUI(streak, prevStreak);
+
   const streakBonus = Math.min(streak * 5, 25);
   const totalGained = gained + streakBonus;
-  points += totalGained; totalDistanceKm += km;
+  points += totalGained;
+  totalDistanceKm += km;
 
   scoreIndicator.textContent = `Points: ${points}`;
   scoreIndicator.classList.add("bump");
@@ -197,23 +220,67 @@ function confirmGuess() {
   lineLayer = L.polyline([[userGuess.lat, userGuess.lng], correct], { color, weight: 3, opacity: 0.8 }).addTo(map);
   correctMarker = L.marker(correct, { icon: makePulseIcon(color) }).addTo(previousGuesses);
   if (guessMarker) map.removeLayer(guessMarker);
-  correctMarker.bindPopup(`<strong style="background:${color};padding:4px 10px;border-radius:8px;">${label}</strong><br>${q.answer}<br>Distance: ${km.toFixed(2)} km`).openPopup();
+  correctMarker.bindPopup(
+    `<strong style="background:${color};padding:4px 10px;border-radius:8px;">${label}</strong><br>${q.answer}<br>Distance: ${km.toFixed(2)} km`
+  ).openPopup();
 
-  currentGameGuesses.push({ question: q.answer, lat: userGuess.lat, lng: userGuess.lng, correctLat: q.lat, correctLng: q.lng, distance: Math.round(meters) });
-  btnNext.disabled = false; btnConfirmGuess.disabled = true;
+  currentGameGuesses.push({
+    question: q.answer, lat: userGuess.lat, lng: userGuess.lng,
+    correctLat: q.lat, correctLng: q.lng, distance: Math.round(meters)
+  });
+  btnNext.disabled = false;
+  btnConfirmGuess.disabled = true;
+}
+
+// --- 🔥 Streak / Combo Visuals ---
+function updateStreakUI(newStreak, oldStreak = 0) {
+  streakIndicator.textContent = `🔥 Streak: ${newStreak}`;
+  if (newStreak > 0) {
+    streakBar.style.width = `${Math.min(newStreak * 10, 100)}%`;
+    streakBar.style.opacity = 0.8;
+  } else {
+    streakBar.style.width = "0%";
+    streakBar.style.opacity = 0.3;
+  }
+
+  if (newStreak > oldStreak) {
+    streakIndicator.classList.add("flash");
+    streakBar.classList.add("glow");
+    showComboBadge(newStreak);
+    setTimeout(() => {
+      streakIndicator.classList.remove("flash");
+      streakBar.classList.remove("glow");
+    }, 800);
+  }
+}
+
+function showComboBadge(value) {
+  const badge = document.createElement("div");
+  badge.textContent = `🔥 Combo x${value}`;
+  badge.style.position = "absolute";
+  badge.style.right = "0";
+  badge.style.top = "-1.2rem";
+  badge.style.fontWeight = "700";
+  badge.style.color = "#ffb366";
+  badge.style.textShadow = "0 0 8px rgba(255,180,0,0.6)";
+  badge.style.animation = "flamePop 1s ease-out forwards";
+  badge.style.pointerEvents = "none";
+  streakBar.parentElement.appendChild(badge);
+  setTimeout(() => badge.remove(), 1000);
 }
 
 // --- Finish ---
 async function finish() {
   stopTimer();
   resultSummary.textContent = `You scored ${points} points 🎯 Total distance: ${totalDistanceKm.toFixed(2)} km`;
-  setScreen(screenResult); nameEntry.style.display = "block";
+  setScreen(screenResult);
+  nameEntry.style.display = "block";
 
   setTimeout(async () => {
     const el = document.getElementById("result-map");
     if (!el || !currentGameGuesses.length) return;
-    el.style.display = "block"; el.innerHTML = "";
-
+    el.style.display = "block";
+    el.innerHTML = "";
     if (el._leaflet_id) el._leaflet_id = null;
 
     const resultMap = L.map(el, {
@@ -237,7 +304,6 @@ async function finish() {
       });
     } catch (err) { console.warn("Could not load global guesses:", err); }
 
-    // ✅ Legend fix (high z-index)
     const legend = L.control({ position: "bottomleft" });
     legend.onAdd = () => {
       const div = L.DomUtil.create("div", "map-legend");
@@ -247,21 +313,7 @@ async function finish() {
         <div class="legend-item"><span class="legend-color" style="background:#ff6b6b"></span>All Players’ Guesses</div>`;
       return div;
     };
-
     legend.addTo(resultMap);
-
-    // force on top of all panes
-    setTimeout(() => {
-      const legendEl = document.querySelector(".map-legend");
-      if (legendEl) {
-        legendEl.style.position = "absolute";
-        legendEl.style.bottom = "10px";
-        legendEl.style.left = "10px";
-        legendEl.style.zIndex = "2000";
-        legendEl.style.pointerEvents = "auto";
-        legendEl.style.opacity = "1";
-      }
-    }, 500);
 
     const bounds = L.latLngBounds(currentGameGuesses.map(g => [g.lat, g.lng]));
     if (bounds.isValid()) resultMap.fitBounds(bounds.pad(0.25));
@@ -289,7 +341,7 @@ function escapeHtml(s) {
   return s.replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 }
 
-// --- Leaderboard ---
+// --- Leaderboards ---
 async function loadLeaderboard() {
   try {
     const q = fbQuery(fbCollection(db, "leaderboard"), fbOrderBy("points", "desc"));
@@ -297,6 +349,7 @@ async function loadLeaderboard() {
     return snap.docs.map(d => d.data());
   } catch { return []; }
 }
+
 async function renderLeaderboard() {
   const data = await loadLeaderboard();
   const highlightName = lastSavedName || localStorage.getItem("lastSavedName") || playerNameInput.value.trim();
@@ -309,12 +362,25 @@ async function renderLeaderboard() {
   setTimeout(() => document.querySelectorAll(".pulse-highlight").forEach(el => el.classList.remove("pulse-highlight")), 1500);
 }
 
+async function renderStartLeaderboard() {
+  const data = await loadLeaderboard();
+  if (!leaderboardBodyStart) return;
+  leaderboardBodyStart.innerHTML = data.slice(0, 10).map((e, i) => `
+    <tr>
+      <td>${i + 1}</td>
+      <td>${escapeHtml(e.name || "")}</td>
+      <td>${e.points}</td>
+      <td>${Number(e.distance).toFixed(2)}</td>
+    </tr>`).join("");
+}
+
 // --- Events ---
 btnConfirmGuess.addEventListener("click", confirmGuess);
 btnClearGuess.addEventListener("click", () => {
   if (!guessLocked && guessMarker) {
     map.removeLayer(guessMarker);
-    guessMarker = null; userGuess = null;
+    guessMarker = null;
+    userGuess = null;
     btnConfirmGuess.disabled = btnClearGuess.disabled = true;
   }
 });
@@ -340,12 +406,18 @@ btnSaveScore.addEventListener("click", async () => {
     data.games.push({ gameId, guesses: currentGameGuesses, timestamp: Date.now() });
     await fbSetDoc(userRef, data);
 
-    scoreSaved = true; lastSavedName = name;
+    scoreSaved = true;
+    lastSavedName = name;
     localStorage.setItem("lastSavedName", name);
-    playerNameInput.disabled = true; btnSaveScore.disabled = true;
+    playerNameInput.disabled = true;
+    btnSaveScore.disabled = true;
     await renderLeaderboard();
+    await renderStartLeaderboard();
     alert("Score saved ✅");
-  } catch (err) { console.error(err); alert("Error saving score."); }
+  } catch (err) {
+    console.error(err);
+    alert("Error saving score.");
+  }
 });
 
 window.addEventListener("resize", () => map && map.invalidateSize());

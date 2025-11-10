@@ -80,7 +80,18 @@ body {
   color: var(--accent-2);
 }
 
-/* ✅ Streak Bar */
+/* ✅ Streak Indicator + Bar */
+#streak-indicator {
+  font-weight: 600;
+  color: var(--accent-2);
+  margin-bottom: 0.2rem;
+  text-shadow: 0 0 8px rgba(118, 228, 247, 0.2);
+  transition: color 0.3s ease, text-shadow 0.3s ease;
+}
+#streak-indicator.flash {
+  animation: flashText 0.6s ease;
+}
+
 #streak-bar {
   height: 8px;
   width: 0%;
@@ -89,6 +100,23 @@ body {
   transition: width 0.4s ease-out, opacity 0.3s;
   opacity: 0.3;
   margin-bottom: 0.4rem;
+}
+#streak-bar.glow {
+  box-shadow: 0 0 20px var(--accent-2);
+}
+
+@keyframes flashText {
+  0% { color: var(--accent-2); text-shadow: 0 0 10px var(--accent-2); }
+  50% { color: var(--warning); text-shadow: 0 0 25px var(--warning); }
+  100% { color: var(--accent-2); text-shadow: none; }
+}
+
+/* 🔥 Combo popup animation */
+@keyframes flamePop {
+  0% { transform: scale(0.8); opacity: 0; }
+  20% { transform: scale(1.3); opacity: 1; }
+  60% { transform: scale(1); opacity: 1; }
+  100% { transform: translateY(-15px) scale(1); opacity: 0; }
 }
 
 /* ✅ Timer styling */
@@ -111,23 +139,6 @@ body {
 @keyframes blink {
   from { opacity: 1; }
   to { opacity: 0.4; }
-}
-
-/* ✅ Game mode selector */
-#mode-select {
-  padding: 0.4rem 0.6rem;
-  border-radius: 8px;
-  background: #0e1230;
-  color: var(--text);
-  border: 1px solid rgba(255,255,255,0.08);
-  font-size: 0.95rem;
-  transition: border-color 0.3s ease, background 0.3s ease;
-}
-#mode-select:hover,
-#mode-select:focus {
-  outline: none;
-  border-color: var(--accent-2);
-  background: rgba(255,255,255,0.05);
 }
 
 /* ✅ Question image */
@@ -162,7 +173,7 @@ body {
 #map.flash-off { box-shadow: 0 0 25px 6px var(--warning); }
 #map.flash-bad { box-shadow: 0 0 20px 4px var(--danger); }
 
-/* ✅ Mini Result Map (always visible, fade-in) */
+/* ✅ Mini Result Map */
 #result-map {
   width: 100%;
   height: 360px;
@@ -209,7 +220,7 @@ body {
   box-shadow: 0 0 10px rgba(118, 228, 247, 0.4);
 }
 
-/* ✅ Leaderboard */
+/* ✅ Leaderboards */
 #leaderboard table, #leaderboard th, #leaderboard td {
   border: 1px solid rgba(255,255,255,0.08);
 }
@@ -230,7 +241,7 @@ body {
   padding: 0.4rem 0.6rem;
 }
 
-/* ✅ Highlighted player row */
+/* ✅ Highlighted row */
 .leaderboard-self {
   background: linear-gradient(90deg, rgba(255, 240, 100, 0.25), rgba(255, 220, 60, 0.15));
   color: var(--highlight) !important;
@@ -239,15 +250,86 @@ body {
   box-shadow: 0 0 12px rgba(255, 235, 60, 0.6);
   transition: background 0.3s, box-shadow 0.3s;
 }
-
-/* ✅ Pulse animation when your row appears */
-.pulse-highlight {
-  animation: pulseRow 1s ease-out;
-}
+.pulse-highlight { animation: pulseRow 1s ease-out; }
 @keyframes pulseRow {
   0% { box-shadow: 0 0 5px rgba(255, 235, 60, 0.2); }
   50% { box-shadow: 0 0 25px rgba(255, 235, 60, 0.9); }
   100% { box-shadow: 0 0 5px rgba(255, 235, 60, 0.2); }
+}
+
+/* 🎨 Improved Start Screen Leaderboard Layout */
+#leaderboard-start {
+  margin-top: 2rem;
+  padding: 1rem 1.25rem 1.25rem;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 14px;
+  box-shadow: inset 0 0 12px rgba(255,255,255,0.03);
+}
+
+#leaderboard-start h3 {
+  margin-top: 0;
+  margin-bottom: 1rem;
+  color: var(--accent);
+  text-align: left;
+  font-size: 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+#leaderboard-start h3::before {
+  content: "🏆";
+  font-size: 1.3rem;
+  margin-right: 0.2rem;
+}
+
+#leaderboard-start table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+  margin-top: 0.5rem;
+}
+
+#leaderboard-start th,
+#leaderboard-start td {
+  padding: 0.6rem 0.8rem;
+}
+
+#leaderboard-start th {
+  background: rgba(255,255,255,0.06);
+  color: var(--accent-2);
+  font-weight: 600;
+  text-align: left;
+}
+
+#leaderboard-start td {
+  color: var(--text);
+  border-top: 1px solid rgba(255,255,255,0.08);
+}
+
+#leaderboard-start tbody tr:hover {
+  background: rgba(255,255,255,0.05);
+  transition: background 0.25s ease;
+}
+
+/* Add spacing after leaderboard and before game counter */
+#games-played {
+  margin-top: 1.2rem !important;
+  margin-bottom: 1.5rem;
+  font-size: 1rem;
+  color: var(--accent-2);
+  text-align: left;
+}
+
+/* Improve Start button layout */
+#btn-start {
+  margin-top: 1rem;
+  padding: 0.9rem 1.4rem;
+  font-size: 1rem;
+  border-radius: 10px;
 }
 
 /* ✅ Input styles */
@@ -265,7 +347,6 @@ body {
   border-color: var(--accent-2);
   background: rgba(255,255,255,0.06);
 }
-#btn-save-score { flex-shrink: 0; }
 
 /* ✅ Animated Correct Marker */
 .animated-pulse-marker { position: relative; width: 30px; height: 30px; }
@@ -288,30 +369,13 @@ body {
   100% { transform: scale(0.6); opacity: 0; }
 }
 
-/* ✅ Leaflet Tooltip */
-.leaflet-tooltip.guess-label {
-  background: rgba(0,0,0,.55);
-  color: #fff;
-  border: 1px solid rgba(255,255,255,.15);
-  border-radius: 8px;
-  padding: 2px 6px;
-  font: 600 12px/1 system-ui, sans-serif;
-  box-shadow: 0 4px 12px rgba(0,0,0,.25);
-}
-
-/* ✅ Games Played Counter */
-#games-played {
-  color: var(--accent-2);
-  font-weight: 500;
-  opacity: 0;
-  animation: fadeInUp 0.5s ease forwards;
-}
+/* ✅ Games Played Counter Animation */
 @keyframes fadeInUp {
   0% { opacity: 0; transform: translateY(4px); }
   100% { opacity: 1; transform: translateY(0); }
 }
 
-/* ✅ Map Legend – perfectly round color dots */
+/* ✅ Map Legend */
 .map-legend {
   background: rgba(15, 18, 33, 0.9);
   color: var(--text);
@@ -323,14 +387,12 @@ body {
   font-weight: 600;
   z-index: 2000 !important;
 }
-
 .map-legend .legend-item {
   display: flex;
   align-items: center;
   gap: 8px;
   margin-bottom: 6px;
 }
-
 .map-legend .legend-color {
   flex: none;
   width: 14px;
@@ -339,23 +401,8 @@ body {
   box-shadow: 0 0 6px rgba(255,255,255,0.25);
   display: inline-block;
   background-clip: padding-box;
-  aspect-ratio: 1 / 1;
 }
-
-.map-legend .legend-item:last-child {
-  margin-bottom: 0;
-}
-
-
-
-/* ✅ Ensure legend always visible above map tiles */
-.leaflet-control-container .map-legend {
-  position: absolute !important;
-  bottom: 10px;
-  left: 10px;
-  z-index: 2000 !important;
-  pointer-events: auto;
-}
+.map-legend .legend-item:last-child { margin-bottom: 0; }
 
 /* ✅ Responsive */
 @media (max-width: 640px) {
@@ -364,6 +411,10 @@ body {
   #map, #result-map { height: 280px; }
   h1 { font-size: 1.6rem; }
 
+  #leaderboard-start h3 { text-align: center; font-size: 1.05rem; }
+  #leaderboard-start table { font-size: 0.85rem; }
+
+  #streak-indicator { font-size: 0.9rem; }
   .map-legend {
     font-size: 0.75rem;
     padding: 8px 10px;

@@ -14,7 +14,7 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-  <!-- Inline backup styles (safe defaults if styles.css fails) -->
+  <!-- Inline backup styles -->
   <style>
     #map, #result-map {
       width: 100%;
@@ -25,68 +25,41 @@
       position: relative;
       z-index: 1;
     }
-
-    #result-map {
-      opacity: 0;
-      transition: opacity 0.8s ease;
-    }
-    #result-map.ready {
-      opacity: 1;
-    }
-
-    .leaflet-popup-content {
-      font: 600 0.95rem/1.3 system-ui;
-    }
-
-    /* ✅ Backup highlight (if CSS fails) */
-    .leaderboard-self {
-      background: rgba(255, 235, 60, 0.2);
-      color: #ffeb3b;
-      font-weight: bold;
-    }
-
-    /* ✅ Backup score bump animation */
+    #result-map { opacity: 0; transition: opacity 0.8s ease; }
+    #result-map.ready { opacity: 1; }
     .bump { animation: pop 0.3s ease; }
-    @keyframes pop {
-      0% { transform: scale(1); }
-      50% { transform: scale(1.15); }
-      100% { transform: scale(1); }
+    @keyframes pop { 0%{transform:scale(1);} 50%{transform:scale(1.15);} 100%{transform:scale(1);} }
+
+    /* 🔥 Combo visual animation */
+    @keyframes flamePop {
+      0% { transform: scale(0.8); opacity: 0; }
+      20% { transform: scale(1.3); opacity: 1; }
+      60% { transform: scale(1); opacity: 1; }
+      100% { transform: scale(1); opacity: 0; transform: translateY(-15px); }
     }
 
-    /* ✅ Legend fallback styling (perfect circles) */
+    .flash { animation: flashText 0.6s ease; }
+    @keyframes flashText {
+      0% { color: var(--accent-2); text-shadow: 0 0 10px var(--accent-2); }
+      50% { color: var(--warning); text-shadow: 0 0 25px var(--warning); }
+      100% { color: var(--accent-2); text-shadow: none; }
+    }
+
+    .glow { box-shadow: 0 0 20px var(--accent-2); transition: box-shadow 0.4s ease; }
+
     .map-legend {
-      position: absolute !important;
-      bottom: 10px;
-      left: 10px;
-      background: rgba(15, 18, 33, 0.9);
-      color: #fff;
-      padding: 10px 14px;
-      border-radius: 12px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.35);
-      font-size: 0.85rem;
-      line-height: 1.2;
-      font-weight: 600;
-      z-index: 2000 !important;
+      position:absolute!important;bottom:10px;left:10px;
+      background:rgba(15,18,33,0.9);color:#fff;
+      padding:10px 14px;border-radius:12px;
+      box-shadow:0 4px 12px rgba(0,0,0,0.35);
+      font-size:0.85rem;line-height:1.2;font-weight:600;z-index:2000!important;
     }
-    .map-legend .legend-item {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 6px;
-    }
-    .map-legend .legend-item:last-child {
-      margin-bottom: 0;
-    }
+    .map-legend .legend-item {display:flex;align-items:center;gap:8px;margin-bottom:6px;}
+    .map-legend .legend-item:last-child{margin-bottom:0;}
     .map-legend .legend-color {
-      flex: none;
-      width: 14px;
-      height: 14px;
-      min-width: 14px;
-      min-height: 14px;
-      border-radius: 50%;
-      display: inline-block;
-      aspect-ratio: 1 / 1;
-      box-shadow: 0 0 6px rgba(255,255,255,0.25);
+      flex:none;width:14px;height:14px;min-width:14px;min-height:14px;
+      border-radius:50%;display:inline-block;aspect-ratio:1/1;
+      box-shadow:0 0 6px rgba(255,255,255,0.25);
     }
   </style>
 </head>
@@ -102,28 +75,26 @@
       <h2 id="start-heading">Ready to play?</h2>
       <p>
         Explore Zürich and guess where University of Zurich buildings are located.<br />
-        10 rounds — test your campus geography skills!
+        10 rounds — each round is <strong>timed (30 seconds)</strong>. Test your campus geography skills!
       </p>
 
-      <!-- Game mode selector -->
-      <div style="margin: 1rem 0;">
-        <label for="mode-select" style="color: var(--muted); font-weight: 500;">
-          Game Mode:
-        </label>
-        <select id="mode-select"
-                style="margin-left: 0.5rem; padding: 0.3rem 0.6rem;
-                       border-radius: 8px; background: var(--card); color: var(--text);">
-          <option value="normal">Normal (no timer)</option>
-          <option value="timed">Timed (30s per round)</option>
-        </select>
+      <!-- 🏆 Leaderboard Preview -->
+      <div id="leaderboard-start">
+        <h3> Top Players</h3>
+        <table id="leaderboard-table-start">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Name</th>
+              <th>Points</th>
+              <th>Total Distance (km)</th>
+            </tr>
+          </thead>
+          <tbody id="leaderboard-body-start"></tbody>
+        </table>
       </div>
 
-      <!-- Game counter -->
-      <div id="games-played"
-           style="margin:0.6rem 0 1.2rem; font-size:0.95rem; color:var(--muted);">
-        Total Games Played: loading...
-      </div>
-
+      <div id="games-played">Total Games Played: loading...</div>
       <button id="btn-start" class="btn primary">Start Game</button>
     </section>
 
@@ -136,24 +107,23 @@
         <div id="score-indicator">Points: 0</div>
       </div>
 
+      <!-- 🔥 Combo streak indicator + bar -->
+      <div id="streak-indicator" style="margin-bottom:0.2rem; font-weight:600; color:var(--accent-2);">
+        🔥 Streak: 0
+      </div>
       <div id="streak-bar"></div>
 
-      <!-- Timer display -->
-      <div id="timer-display"
-           style="text-align:right; color:var(--accent-2);
-                  font-weight:600; margin-bottom:0.5rem; display:none;">
-        Time left: 30s
-      </div>
+      <!-- Timer -->
+      <div id="timer-display">Time left: 30s</div>
 
-      <figure class="photo-wrap" style="margin-bottom: 1rem;">
+      <figure class="photo-wrap">
         <img id="question-image" src="" alt="Location to guess" />
       </figure>
 
       <h3 id="question-text"></h3>
-
       <div id="map"></div>
 
-      <div class="controls" style="gap:.5rem;">
+      <div class="controls">
         <button id="btn-clear-guess" class="btn" disabled>Clear Guess</button>
         <button id="btn-confirm-guess" class="btn primary" disabled>Confirm Guess</button>
         <button id="btn-next" class="btn" disabled>Next</button>
@@ -168,25 +138,18 @@
       <div id="result-map"></div>
 
       <!-- Name entry -->
-      <div id="name-entry" style="margin-top:1rem;">
-        <label for="player-name" style="color:var(--muted)">
-          Enter your name for the leaderboard:
-        </label>
-        <div style="margin-top:0.5rem; display:flex; gap:0.5rem; flex-wrap:wrap;">
-          <input id="player-name" type="text" maxlength="20"
-                 placeholder="Your name"
-                 style="padding:0.6rem; border-radius:8px;
-                        border:1px solid rgba(255,255,255,0.08);
-                        background:transparent; color:var(--text); flex:1;" />
+      <div id="name-entry">
+        <label for="player-name" style="color:var(--muted)">Enter your name for the leaderboard:</label>
+        <div style="margin-top:0.5rem;display:flex;gap:0.5rem;flex-wrap:wrap;">
+          <input id="player-name" type="text" maxlength="20" placeholder="Your name" />
           <button id="btn-save-score" class="btn primary">Save Score</button>
         </div>
       </div>
 
       <!-- Leaderboard -->
-      <div id="leaderboard" style="margin-top:1.5rem;">
+      <div id="leaderboard">
         <h3>Leaderboard</h3>
-        <table id="leaderboard-table"
-               style="width:100%; border-collapse:collapse; text-align:left;">
+        <table id="leaderboard-table">
           <thead>
             <tr>
               <th>#</th>
@@ -199,9 +162,7 @@
         </table>
       </div>
 
-      <button id="btn-restart" class="btn primary" style="margin-top:1.2rem;">
-        Play Again
-      </button>
+      <button id="btn-restart" class="btn primary">Play Again</button>
     </section>
   </main>
 
@@ -225,7 +186,6 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    // ✅ Expose Firestore helpers globally
     window.db = db;
     window.fbCollection = collection;
     window.fbAddDoc = addDoc;
