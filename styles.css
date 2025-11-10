@@ -173,6 +173,20 @@ body {
 #map.flash-off { box-shadow: 0 0 25px 6px var(--warning); }
 #map.flash-bad { box-shadow: 0 0 20px 4px var(--danger); }
 
+
+/* 🌍 Map reveal animation */
+.map-reveal {
+  filter: blur(8px) brightness(0.7);
+  opacity: 0;
+  transform: scale(1.02);
+  transition: filter 1s ease, opacity 1s ease, transform 1s ease;
+}
+.map-reveal.active {
+  filter: blur(0) brightness(1);
+  opacity: 1;
+  transform: scale(1);
+}
+
 /* ✅ Mini Result Map */
 #result-map {
   width: 100%;
@@ -374,6 +388,61 @@ body {
   0% { opacity: 0; transform: translateY(4px); }
   100% { opacity: 1; transform: translateY(0); }
 }
+
+/* 🖼️ Progress Bar */
+#progress-container {
+  width: 100%;
+  background: rgba(255,255,255,0.05);
+  height: 6px;
+  border-radius: 6px;
+  overflow: hidden;
+  margin: 0.4rem 0 1rem;
+}
+#progress-bar {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, var(--accent-2), var(--accent));
+  transition: width 0.5s ease;
+}
+
+/* ✨ Screen transition animations */
+.screen {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.5s ease, transform 0.5s ease;
+}
+.screen.active {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* 🧱 Light theme support */
+body.light {
+  --bg:#f9fafb;
+  --card:#ffffff;
+  --text:#1b1b1b;
+  --muted:#444;
+  --accent:#5a7cff;
+  --accent-2:#49bce2;
+  --danger:#ff4b4b;
+  --success:#39b37c;
+  --warning:#ffa14a;
+  --highlight:#d4c900;
+  background: linear-gradient(180deg, var(--bg), #e8ecff);
+  color: var(--text);
+}
+body.light .btn {
+  background: #e8ecff;
+  color: #111;
+}
+body.light .btn.primary {
+  color: white;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+}
+body, .screen {
+  transition: background 0.4s ease, color 0.4s ease;
+}
+
 
 /* ✅ Map Legend */
 .map-legend {

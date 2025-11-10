@@ -67,6 +67,7 @@
   <main class="container">
     <header class="header">
       <h1>UZH Map Guessr</h1>
+      <button id="btn-theme" class="btn" style="margin-left:0.5rem;">🌞 Light Mode</button>
       <!-- 🔇 Sound toggle button -->
       <button id="btn-sound" class="btn" style="margin-left:1rem;">🔊 Sound On</button>
     </header>
@@ -107,6 +108,8 @@
         <div id="round-indicator">Round 1/10</div>
         <div id="score-indicator">Points: 0</div>
       </div>
+
+      <div id="progress-container"><div id="progress-bar"></div></div>
 
       <!-- 🔥 Combo streak indicator + bar -->
       <div id="streak-indicator" style="margin-bottom:0.2rem; font-weight:600; color:var(--accent-2);">

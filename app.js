@@ -40,6 +40,19 @@ const streakIndicator = document.getElementById("streak-indicator");
 const btnHint = document.getElementById("btn-hint");
 const hintText = document.getElementById("hint-text");
 
+// 🧱 Theme toggle
+const btnTheme = document.getElementById("btn-theme");
+let currentTheme = localStorage.getItem("theme") || "dark";
+document.body.classList.toggle("light", currentTheme === "light");
+btnTheme.textContent = currentTheme === "light" ? "🌙 Dark Mode" : "🌞 Light Mode";
+
+btnTheme.addEventListener("click", () => {
+  document.body.classList.toggle("light");
+  const newTheme = document.body.classList.contains("light") ? "light" : "dark";
+  localStorage.setItem("theme", newTheme);
+  btnTheme.textContent = newTheme === "light" ? "🌙 Dark Mode" : "🌞 Light Mode";
+});
+
 // 🆕 Sound elements
 const soundCorrect = document.getElementById("sound-correct");
 const soundWrong = document.getElementById("sound-wrong");
@@ -237,8 +250,23 @@ function renderRound() {
   const q = gameQuestions[currentIndex];
   questionText.textContent = `Where is: ${q.answer}?`;
   roundIndicator.textContent = `Round ${currentIndex + 1}/${gameQuestions.length}`;
+  // 🖼️ Update progress bar
+  const progress = ((currentIndex) / gameQuestions.length) * 100;
+  document.getElementById("progress-bar").style.width = `${progress}%`;
   questionImage.src = q.image;
   btnConfirmGuess.disabled = btnClearGuess.disabled = btnNext.disabled = true;
+
+  // 🧭 Mini-map reveal effect
+  const mapEl = document.getElementById("map");
+  mapEl.classList.remove("active");
+  mapEl.classList.add("map-reveal");
+  setTimeout(() => {
+    mapEl.classList.add("active");
+  }, 100);
+  setTimeout(() => {
+    mapEl.classList.remove("map-reveal", "active");
+  }, 1100);
+
   startTimer();
 }
 
@@ -365,6 +393,7 @@ function showComboBadge(value) {
 
 // --- Finish ---
 async function finish() {
+  document.getElementById("progress-bar").style.width = "100%";
   stopTimer();
   resultSummary.textContent = `You scored ${points} points 🎯 Total distance: ${totalDistanceKm.toFixed(2)} km`;
   setScreen(screenResult);
@@ -480,6 +509,8 @@ btnClearGuess.addEventListener("click", () => {
 });
 btnNext.addEventListener("click", () => {
   currentIndex < gameQuestions.length - 1 ? renderRound(++currentIndex) : finish();
+  const progress = ((currentIndex) / gameQuestions.length) * 100;
+  document.getElementById("progress-bar").style.width = `${progress}%`;
 });
 btnStart.addEventListener("click", startGame);
 btnRestart.addEventListener("click", () => setScreen(screenStart));
