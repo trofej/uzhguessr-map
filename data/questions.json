@@ -214,5 +214,32 @@
     "lat": 47.37467866139877,
     "lng": 8.548933314074098,
     "hint": "Right inside the main entrance of the UZH Hauptgebäude."
+  },
+  {
+    "id": 25,
+    "question": "Where is Botanischer Garten located?",
+    "image": "images/botanischer garten1.jpg",
+    "answer": "Botanischer Garten",
+    "lat": 47.358200209741895,
+    "lng": 8.561457365122934,
+    "hint": "Near Zürichberg, in the botanical garden."
+  },
+  {
+    "id": 26,
+    "question": "Where is BWL Bibliothek Lernraum located?",
+    "image": "images/BWL1.jpg",
+    "answer": "BWL Bibliothek Lernraum",
+    "lat": 47.37381385610801,
+    "lng": 8.552872428677377,
+    "hint": "Next to the business administration library."
+  },
+  {
+    "id": 27,
+    "question": "Where is this garden located?",
+    "image": "images/garten.jpg",
+    "answer": "Rechberggarten",
+    "lat": 47.37321500015558,
+    "lng": 8.548288882290917,
+    "hint": "Garden located under the main building of uzh"
   }
 ]
