@@ -141,6 +141,8 @@ body {
   to { opacity: 0.4; }
 }
 
+.photo-wrap img, #map, #result-map { height: clamp(220px,26vh,290px) !important; }
+
 /* ✅ Question image */
 .photo-wrap {
   margin: 0;
