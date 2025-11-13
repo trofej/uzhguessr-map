@@ -473,6 +473,206 @@ body, .screen {
 }
 .map-legend .legend-item:last-child { margin-bottom: 0; }
 
+
+/* 🟥 Cross marker (player's guess) */
+.cross-marker .cross-shape {
+  position: relative;
+  width: 14px;
+  height: 14px;
+}
+.cross-marker .cross-shape::before,
+.cross-marker .cross-shape::after {
+  content: "";
+  position: absolute;
+  left: 6px;
+  top: 0;
+  width: 2px;
+  height: 14px;
+  background: #ff6b6b;
+}
+.cross-marker .cross-shape::after {
+  transform: rotate(90deg);
+}
+
+/* 🟩 Cube (square marker) for correct locations */
+.square-marker .square-shape {
+  width: 12px;
+  height: 12px;
+  background: #60d394;
+  border: 2px solid #1b1f2a;
+  border-radius: 3px;
+  box-shadow: 0 0 6px rgba(96, 211, 148, 0.6);
+}
+
+/* 🔷 Legend samples */
+.legend-symbol.cross-sample {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  background: none;
+  position: relative;
+}
+.legend-symbol.cross-sample::before,
+.legend-symbol.cross-sample::after {
+  content: "";
+  position: absolute;
+  left: 5px;
+  top: -1px;
+  width: 2px;
+  height: 14px;
+  background: #ff6b6b;
+}
+.legend-symbol.cross-sample::after {
+  transform: rotate(90deg);
+}
+
+.legend-symbol.square-sample {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  background: #60d394;
+  border-radius: 2px;
+  border: 1px solid #1b1f2a;
+}
+
+
+/* 🏷️ Hotspot hover labels */
+.leaflet-tooltip.hotspot-label {
+  background: rgba(15, 18, 33, 0.9);
+  color: #fff;
+  border: 1px solid rgba(255,255,255,0.15);
+  padding: 4px 8px;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-align: center;
+  pointer-events: none;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+.leaflet-tooltip.hotspot-label.leaflet-tooltip-fade {
+  opacity: 0;
+  transform: translateY(4px);
+}
+
+
+/* 🌈 Connection highlight styles */
+.leaflet-interactive.hotspot:hover {
+  filter: drop-shadow(0 0 4px currentColor);
+  transform: scale(1.05);
+  transition: 0.2s ease;
+}
+
+.hotspot-label {
+  font-weight: 600;
+  font-size: 0.8rem;
+  color: #fff !important;
+  background: rgba(0,0,0,0.55);
+  padding: 2px 6px;
+  border-radius: 6px;
+  border: 1px solid rgba(255,255,255,0.2);
+}
+
+
+/* 🎯 Enhanced Guess Result Popups */
+.leaflet-popup-content-wrapper {
+  background: rgba(15, 18, 33, 0.95);
+  color: var(--text);
+  border-radius: 14px;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.5);
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 0.95rem;
+  border: 1px solid rgba(255,255,255,0.08);
+  backdrop-filter: blur(6px);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+.leaflet-popup-content-wrapper:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 32px rgba(0,0,0,0.6);
+}
+
+.leaflet-popup-tip {
+  background: rgba(15, 18, 33, 0.95);
+}
+
+/* Inner popup card styling */
+.guess-popup {
+  text-align: center;
+  line-height: 1.4;
+  max-width: 240px;
+  color: #fff; /* ensure all text is visible */
+  font-family: "Inter", system-ui, sans-serif;
+}
+
+/* 🟡 Header (emoji + label) */
+.guess-popup .popup-header {
+  font-weight: 700;
+  font-size: 1rem;
+  color: #fff;
+  border-radius: 10px 10px 0 0;
+  padding: 6px 12px;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.4);
+  letter-spacing: 0.3px;
+}
+
+/* 🟦 Body (dark background, white text) */
+.guess-popup .popup-body {
+  background: var(--card);
+  border-radius: 0 0 10px 10px;
+  padding: 10px 12px;
+  box-shadow: inset 0 0 8px rgba(255,255,255,0.04);
+  color: #fff; /* make all text white by default */
+}
+
+.guess-popup .popup-body hr {
+  border: none;
+  border-top: 1px solid rgba(255,255,255,0.1);
+  margin: 8px 0;
+}
+
+/* Title (building name) */
+.guess-popup .popup-body div:first-child {
+  font-weight: 600;
+  font-size: 1.05rem;
+  margin-bottom: 2px;
+}
+
+/* Distance text */
+.guess-popup .popup-body div:nth-child(2) {
+  font-size: 0.85rem;
+  opacity: 0.9;
+}
+
+/* Points line */
+.guess-popup .popup-body div:last-child {
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin-top: 4px;
+}
+
+/* Muted text (if used) */
+.guess-popup .popup-body small {
+  font-size: 0.75rem;
+  color: rgba(255,255,255,0.7);
+}
+
+
+/* Light mode support */
+body.light .leaflet-popup-content-wrapper {
+  background: rgba(255,255,255,0.95);
+  color: var(--text);
+  border: 1px solid rgba(0,0,0,0.08);
+}
+body.light .leaflet-popup-tip {
+  background: rgba(255,255,255,0.95);
+}
+body.light .guess-popup .popup-body {
+  background: #f7f8fc;
+  color: #222;
+  box-shadow: inset 0 0 6px rgba(0,0,0,0.05);
+}
+
+
 /* ✅ Responsive Enhancements */
 
 /* --- Tablet and smaller laptops (≤1024px) --- */

@@ -335,9 +335,23 @@ function confirmGuess() {
   lineLayer = L.polyline([[userGuess.lat, userGuess.lng], correct], { color, weight: 3, opacity: 0.8 }).addTo(map);
   correctMarker = L.marker(correct, { icon: makePulseIcon(color) }).addTo(previousGuesses);
   if (guessMarker) map.removeLayer(guessMarker);
-  correctMarker.bindPopup(
-    `<strong style="background:${color};padding:4px 10px;border-radius:8px;">${label}</strong><br>${q.answer}<br>Distance: ${km.toFixed(2)} km`
-  ).openPopup();
+  correctMarker.bindPopup(`
+  <div class="guess-popup">
+    <div class="popup-header" style="background:${color};">
+      ${label}
+    </div>
+    <div class="popup-body">
+      <div style="font-weight:600;font-size:1.05rem;">${q.answer}</div>
+      <div style="font-size:0.85rem;opacity:0.85;margin-top:2px;">
+        ${km.toFixed(2)} km away
+      </div>
+      <hr>
+      <div style="font-size:0.85rem;">
+        <span style="color:${color};font-weight:600;">+${totalGained || gained} pts</span>
+      </div>
+    </div>
+  </div>
+`).openPopup();
 
   // 🆕 Play sound feedback
   if (gained >= 40) playSound("correct");
@@ -401,49 +415,185 @@ async function finish() {
 
   setTimeout(async () => {
     const el = document.getElementById("result-map");
-    if (!el || !currentGameGuesses.length) return;
-    el.style.display = "block";
-    el.innerHTML = "";
-    if (el._leaflet_id) el._leaflet_id = null;
+    if (!el) return;
 
+    // Reset old map
+    if (el._leaflet_id) {
+      el._leaflet_id = null;
+      el.innerHTML = "";
+    }
+    el.style.display = "block";
+
+    if (!currentGameGuesses.length) {
+      el.innerHTML = "<p style='text-align:center;color:var(--muted)'>No map data for this round.</p>";
+      return;
+    }
+
+    // Load question data for hints
+    let allQuestions = [];
+    try {
+      const res = await fetch("data/questions.json");
+      allQuestions = await res.json();
+    } catch (err) {
+      console.error("Failed to load questions.json:", err);
+    }
+
+    // Create map
     const resultMap = L.map(el, {
       center: [47.3788, 8.5481],
-      zoom: 13, zoomControl: false, attributionControl: false,
+      zoom: 13,
+      zoomControl: true,
+      attributionControl: false,
     });
+
     L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png", {
-      subdomains: "abcd", maxZoom: 19,
+      subdomains: "abcd",
+      maxZoom: 19,
     }).addTo(resultMap);
 
+    const bounds = [];
+
+    // 🎨 Palette for global guesses
+    const palette = [
+      "#ff6b6b", "#ffb366", "#ffd166", "#8aa1ff", "#76e4f7",
+      "#60d394", "#f871a0", "#a0f76e", "#f1a6ff", "#66d9ff",
+      "#ffa3a3", "#c1ff9f"
+    ];
+
+    // --- 🎯 Your Guesses + Correct Locations ---
     currentGameGuesses.forEach(g => {
-      L.circleMarker([g.lat, g.lng], { radius: 6, color: "#8aa1ff", fillColor: "#8aa1ff", fillOpacity: 0.8 })
-        .bindTooltip(`You: ${g.question} (${g.distance}m)`).addTo(resultMap);
-      L.circleMarker([g.correctLat, g.correctLng], { radius: 5, color: "#60d394", fillColor: "#60d394", fillOpacity: 0.7 }).addTo(resultMap);
+      // ❌ Player's guess marker (cross)
+      if (g.lat && g.lng) {
+        const crossIcon = L.divIcon({
+          className: "cross-marker",
+          html: `<div class="cross-shape"></div>`,
+          iconSize: [16, 16],
+          iconAnchor: [8, 8],
+        });
+        L.marker([g.lat, g.lng], { icon: crossIcon })
+          .bindTooltip(`❌ Your Guess: ${g.question}<br>${g.distance}m away`, { direction: "top" })
+          .addTo(resultMap);
+        bounds.push([g.lat, g.lng]);
+      }
+
+      // 🟩 Correct cube marker
+      const match = allQuestions.find(q => q.answer === g.question);
+      const hint = match?.hint || "No hint available.";
+      const image = match?.image || null;
+
+      const squareIcon = L.divIcon({
+        className: "square-marker",
+        html: `<div class="square-shape"></div>`,
+        iconSize: [14, 14],
+        iconAnchor: [7, 7],
+      });
+
+      const correctMarker = L.marker([g.correctLat, g.correctLng], { icon: squareIcon }).addTo(resultMap);
+
+      const popupContent = `
+        <div class="guess-popup">
+          <div class="popup-header" style="background:#60d394;">🏢 ${g.question}</div>
+          <div class="popup-body">
+            ${image ? `<img src="${image}" alt="${g.question}" style="width:100%;border-radius:8px;margin-bottom:6px;">` : ""}
+            <div style="font-size:0.9rem;opacity:0.9;">💡 ${hint}</div>
+          </div>
+        </div>`;
+      correctMarker.bindPopup(popupContent);
+
+      bounds.push([g.correctLat, g.correctLng]);
     });
 
+    // --- 🌈 Global hotspots with connection to correct buildings ---
     try {
       const snapAll = await fbGetDocs(fbCollection(db, "guesses"));
-      snapAll.docs.map(d => d.data()).forEach(({ lat, lng }) => {
-        L.circleMarker([lat, lng], { radius: 16, fillColor: "#ff6b6b", fillOpacity: 0.12, stroke: false }).addTo(resultMap);
-      });
-    } catch (err) { console.warn("Could not load global guesses:", err); }
+      const allGuesses = snapAll.docs.map(d => d.data());
+      const grouped = {};
 
+      allGuesses.forEach(g => {
+        if (!g.question || !g.lat || !g.lng) return;
+        if (!grouped[g.question]) grouped[g.question] = [];
+        grouped[g.question].push(g);
+      });
+
+      const names = Object.keys(grouped);
+      names.forEach((name, idx) => {
+        const color = palette[idx % palette.length];
+        const guesses = grouped[name];
+
+        // 🎯 Find correct location from allQuestions
+        const q = allQuestions.find(q => q.answer === name);
+        if (!q) return;
+
+        // --- Draw all hotspots ---
+        const points = guesses.map(g => [g.lat, g.lng]);
+        points.forEach(([lat, lng]) => {
+          const hotspot = L.circleMarker([lat, lng], {
+            radius: 10,
+            fillColor: color,
+            fillOpacity: 0.18,
+            stroke: false,
+            className: "hotspot"
+          }).addTo(resultMap);
+
+          hotspot.bindTooltip(name, {
+            permanent: false,
+            direction: "top",
+            className: "hotspot-label",
+            opacity: 0.95
+          });
+
+          // 🔥 Highlight on hover
+          hotspot.on("mouseover", () => {
+            hotspot.setStyle({ fillOpacity: 0.4 });
+          });
+          hotspot.on("mouseout", () => {
+            hotspot.setStyle({ fillOpacity: 0.18 });
+          });
+        });
+
+        // --- Compute centroid of the cluster ---
+        const avgLat = points.reduce((sum, p) => sum + p[0], 0) / points.length;
+        const avgLng = points.reduce((sum, p) => sum + p[1], 0) / points.length;
+
+        // --- Draw connecting line ---
+        const line = L.polyline([[avgLat, avgLng], [q.lat, q.lng]], {
+          color: color,
+          weight: 2,
+          opacity: 0.3,
+          dashArray: "3,6"
+        }).addTo(resultMap);
+
+        // --- Halo around correct cube ---
+        L.circle([q.lat, q.lng], {
+          radius: 80,
+          color: color,
+          weight: 2,
+          fillColor: color,
+          fillOpacity: 0.05,
+          dashArray: "4,6"
+        }).addTo(resultMap);
+      });
+    } catch (err) {
+      console.warn("Could not load global guesses:", err);
+    }
+
+    // --- 🗺️ Legend ---
     const legend = L.control({ position: "bottomleft" });
     legend.onAdd = () => {
       const div = L.DomUtil.create("div", "map-legend");
       div.innerHTML = `
-        <div class="legend-item"><span class="legend-color" style="background:#8aa1ff"></span>Your Guesses</div>
-        <div class="legend-item"><span class="legend-color" style="background:#60d394"></span>Correct Locations</div>
-        <div class="legend-item"><span class="legend-color" style="background:#ff6b6b"></span>All Players’ Guesses</div>`;
+        <div class="legend-item"><span class="legend-symbol cross-sample"></span>Your Guesses</div>
+        <div class="legend-item"><span class="legend-symbol square-sample"></span>Correct Locations</div>`;
       return div;
     };
     legend.addTo(resultMap);
 
-    const bounds = L.latLngBounds(currentGameGuesses.map(g => [g.lat, g.lng]));
-    if (bounds.isValid()) resultMap.fitBounds(bounds.pad(0.25));
-    resultMap.invalidateSize();
+    if (bounds.length > 0) resultMap.fitBounds(bounds, { padding: [30, 30] });
+    setTimeout(() => resultMap.invalidateSize(), 300);
     el.classList.add("ready");
   }, 400);
 }
+
 
 // --- Utilities ---
 function scoreFromDistance(m) {
