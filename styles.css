@@ -490,10 +490,10 @@ body, .screen {
     font-size: 1.6rem;
   }
   #map, #result-map {
-    height: 50vh;
+    height: 40vh;
   }
   .photo-wrap img {
-    height: 50vh;
+    height: 40vh;
   }
   .controls {
     flex-wrap: wrap;
@@ -527,14 +527,14 @@ body, .screen {
 
   /* Map and photo scale dynamically */
   #map, #result-map {
-    height: 45vh;
+    height: 38vh;
     border-radius: 12px;
   }
 
   .photo-wrap img {
     max-width: 100%;
     height: auto;
-    max-height: 45vh;
+    max-height: 38vh;
     border-radius: 12px;
   }
 
@@ -600,11 +600,11 @@ body, .screen {
   }
 
   #map, #result-map {
-    height: 42vh;
+    height: 36vh;
   }
 
   .photo-wrap img {
-    max-height: 40vh;
+    max-height: 34vh;
   }
 
   #question-text {
