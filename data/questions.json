@@ -349,5 +349,33 @@
     "lat": 47.373542675927425,
     "lng": 8.550892753347428,
     "hint": "Students study law at this place"
+  },
+  {
+    "id": 40,
+    "question": "Where is this picture located?",
+    "image": "images/Baustelle Forum.jpg",
+    "answer": "Forum Baustelle",
+    "lat": 47.3740490352199,
+    "lng": 8.550858115298164,
+    "hint": "The new uzh building is being built next to the main building"
+  },
+  {
+    "id": 40,
+    "question": "Where is this picture located?",
+    "image": "images/ASVZ Gloriarank.jpg",
+    "answer": "ASVZ Gloriarank",
+    "lat": 47.37671759422509,
+    "lng": 8.553194718304642
+    "hint": "New gym complex near usz and careum"
+  },
+  {
+    "id": 41,
+    "question": "Where is this picture located?",
+    "image": "images/Gebäude Andreasstrasse 1.jpg",
+    "answer": "Gebäude Andreasstrasse",
+    "lat": 47.4132274962814, 
+    "lng": 8.54872856966854
+    "hint": "Building in oerlikon"
   }
+
 ]
