@@ -527,7 +527,7 @@ body, .screen {
 
   /* Map and photo scale dynamically */
   #map, #result-map {
-    height: 38vh;
+    height: 32vh;
     border-radius: 12px;
   }
 
@@ -600,7 +600,7 @@ body, .screen {
   }
 
   #map, #result-map {
-    height: 36vh;
+    height: 32vh;
   }
 
   .photo-wrap img {
