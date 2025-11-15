@@ -165,7 +165,7 @@
     "id": 19,
     "question": "Where is UB Anglistik located?",
     "image": "images/UB Anglizistik.jpg",
-    "answer": "UB Anglizistik",
+    "answer": "UB Anglistik",
     "lat": 47.372763814659244,
     "lng": 8.555512335410945,
     "hint": "Found near the Faculty of Arts on Schönberggasse."
@@ -214,5 +214,177 @@
     "lat": 47.37467866139877,
     "lng": 8.548933314074098,
     "hint": "Right inside the main entrance of the UZH Hauptgebäude."
+  },
+  {
+    "id": 25,
+    "question": "Where is Botanischer Garten located?",
+    "image": "images/botanischer garten1.jpg",
+    "answer": "Botanischer Garten",
+    "lat": 47.358200209741895,
+    "lng": 8.561457365122934,
+    "hint": "Near Zürichberg, in the botanical garden."
+  },
+  {
+    "id": 26,
+    "question": "Where is BWL Bibliothek Lernraum located?",
+    "image": "images/BWL1.jpg",
+    "answer": "BWL Bibliothek Lernraum",
+    "lat": 47.37381385610801,
+    "lng": 8.552872428677377,
+    "hint": "Next to the business administration library."
+  },
+  {
+    "id": 27,
+    "question": "Where is this garden located?",
+    "image": "images/garten.jpg",
+    "answer": "Rechberggarten",
+    "lat": 47.37321500015558,
+    "lng": 8.548288882290917,
+    "hint": "Garden located under the main building of uzh"
+  },
+  {
+    "id": 28,
+    "question": "Where is this garden located?",
+    "image": "images/garten1.jpg",
+    "answer": "Rechberggarten",
+    "lat": 47.37319854475735,
+    "lng": 8.54828078280838,
+    "hint": "Garden located under the main building of uzh"
+  },
+  {
+    "id": 29,
+    "question": "Where is Psychologisches Institut Sozialpsychologie located?",
+    "image": "images/Binzmühlestrasse.jpg",
+    "answer": "Psychologisches Institut Sozialpsychologie",
+    "lat": 47.41427655141583,
+    "lng": 8.549932869971126,
+    "hint": "Building in Oerlikon"
+  },
+  {
+    "id": 30,
+    "question": "Where is this building located?",
+    "image": "images/gebäude.jpg",
+    "answer": "UZH Main Building ",
+    "lat": 47.37547437974428,
+    "lng": 8.547965395728733,
+    "hint": "Part of the main complex"
+  },
+  {
+    "id": 31,
+    "question": "Where is guetä eggä located?",
+    "image": "images/guete eggä.jpg",
+    "answer": "Guetä Eggä",
+    "lat": 47.373650070546795,
+    "lng": 8.55332508355403,
+    "hint": "Next to the business institute"
+  },
+  {
+    "id": 32,
+    "question": "Where is this picture located?",
+    "image": "images/Irchel9.jpg",
+    "answer": "Irchel Innenhof",
+    "lat": 47.39827976001328,
+    "lng": 8.549701735225709,
+    "hint": "Inside the irchel campus"
+  },
+  {
+    "id": 33,
+    "question": "Where is this picture located?",
+    "image": "images/irchel10.jpg",
+    "answer": "Irchel Statue",
+    "lat": 47.397423019311,
+    "lng": 8.548228459904756,
+    "hint": "In the irchel campus"
+  },
+  {
+    "id": 34,
+    "question": "Where is this picture located?",
+    "image": "images/Irchelsaal.jpg",
+    "answer": "Irchel Vorlesungssaal",
+    "lat": 47.39679832284102,
+    "lng": 8.549144886637515,
+    "hint": "Inside the irchel buildings"
+  },
+  {
+    "id": 35,
+    "question": "Where is this picture located?",
+    "image": "images/Kuppel2.jpg",
+    "answer": "Kuppel Main building",
+    "lat": 47.37448268187283,
+    "lng": 8.54872844930895,
+    "hint": "Inside the main building"
+  },
+  {
+    "id": 36,
+    "question": "Where is Life Science Campus located?",
+    "image": "images/Life Science Campus Schlieren 2.jpg",
+    "answer": "Life Science Campus Schlieren",
+    "lat": 47.3991910798257,
+    "lng": 8.457948872790325,
+    "hint": "Campus located in Schlieren"
+  },
+  {
+    "id": 37,
+    "question": "Where is Naturhistorisches Museum located?",
+    "image": "images/Naturhistorisches Museum.jpg",
+    "answer": "Naturhistorisches Museum",
+    "lat": 47.37531405212346,
+    "lng": 8.548007187966792,
+    "hint": "Museum inside the main building"
+  },
+  {
+    "id": 38,
+    "question": "Where is this picture located?",
+    "image": "images/RWI3.jpg",
+    "answer": "RWI Bibliothek",
+    "lat": 47.373542675927425,
+    "lng": 8.550892753347428,
+    "hint": "Students study law at this place"
+  },
+  {
+    "id": 39,
+    "question": "Where is this picture located?",
+    "image": "images/RWI5.jpg",
+    "answer": "RWI Bibliothek",
+    "lat": 47.373542675927425,
+    "lng": 8.550892753347428,
+    "hint": "Students study law at this place"
+  },
+  {
+    "id": 40,
+    "question": "Where is this picture located?",
+    "image": "images/Baustelle Forum.jpg",
+    "answer": "Forum Baustelle",
+    "lat": 47.3740490352199,
+    "lng": 8.550858115298164,
+    "hint": "The new uzh building is being built next to the main building"
+  },
+  {
+    "id": 41,
+    "question": "Where is this picture located?",
+    "image": "images/ASVZ Gloriarank.jpg",
+    "answer": "ASVZ Gloriarank",
+    "lat": 47.37671759422509,
+    "lng": 8.553194718304642,
+    "hint": "New gym complex near usz and careum"
+  },
+  {
+    "id": 42,
+    "question": "Where is this picture located?",
+    "image": "images/Gebäude Andreasstrasse 1.jpg",
+    "answer": "Gebäude Andreasstrasse",
+    "lat": 47.4132274962814, 
+    "lng": 8.54872856966854,
+    "hint": "Building in oerlikon"
+  },
+  {
+    "id": 43,
+    "question": "Where is this picture located?",
+    "image": "images/gebäude4.jpg",
+    "answer": "Archäologisches Institut",
+    "lat": 47.37526131507343,
+    "lng": 8.548974191641047,
+    "hint": "Building next to the main building"
   }
+
 ]
