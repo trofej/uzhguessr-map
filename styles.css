@@ -701,135 +701,177 @@ body.light .guess-popup .popup-body {
   }
 }
 
-/* --- Mobile devices (≤768px) --- */
+/* --- Mobile Better Layout (≤768px) --- */
 @media (max-width: 768px) {
+
   body, html {
-    font-size: 15px;
-    overflow-x: hidden;
+    font-size: 16px;
   }
 
   .container {
-    padding: 0.8rem;
-    max-width: 100%;
+    padding: 1.1rem;
   }
 
+  /* Header */
   .header {
     flex-direction: column;
-    align-items: flex-start;
-    text-align: left;
-    gap: 0.4rem;
+    gap: 0.8rem;
+    align-items: center;
+    margin-bottom: 1.2rem;
   }
-
   .header h1 {
-    font-size: 1.4rem;
-    margin-bottom: 0.2rem;
+    font-size: 1.6rem;
   }
 
-  /* Map and photo scale dynamically */
-  #map, #result-map {
-    height: 32vh;
-    border-radius: 12px;
+  /* Status bar spacing */
+  .status {
+    margin-bottom: 1.4rem;
   }
 
+  #score-indicator,
+  #round-indicator {
+    font-size: 1rem;
+  }
+
+  /* Add breathing room */
+  #question-text {
+    margin: 0.8rem 0;
+    font-size: 1.05rem;
+    text-align: center;
+  }
+
+  .photo-wrap {
+    margin-bottom: 1rem;
+  }
+
+  /* Improve image size */
   .photo-wrap img {
-    max-width: 100%;
     height: auto;
-    max-height: 38vh;
-    border-radius: 12px;
+    max-height: 36vh;
+    border-radius: 14px;
   }
 
-  /* Button layout */
+  /* Map bigger & spaced */
+  #map {
+    height: 35vh;
+    margin-top: 0.6rem;
+    margin-bottom: 1.2rem;
+    border-radius: 14px;
+  }
+
+  /* Timer centered + space */
+  #timer-display {
+    font-size: 1rem;
+    text-align: center;
+    margin-bottom: 0.8rem;
+  }
+
+  /* Controls with spacing */
   .controls {
     flex-direction: column;
-    align-items: stretch;
-    gap: 0.5rem;
+    gap: 0.7rem;
   }
-
   .btn {
     width: 100%;
-    font-size: 0.95rem;
-    padding: 0.6rem 1rem;
-  }
-
-  #question-text {
+    padding: 0.75rem 1rem;
+    border-radius: 10px;
     font-size: 1rem;
-    margin-top: 0.4rem;
   }
 
-  #streak-indicator {
-    font-size: 0.9rem;
-  }
-
-  #timer-display {
-    font-size: 0.9rem;
+  /* Hint text spacing */
+  #hint-text {
+    margin: 0.5rem 0 1rem;
     text-align: center;
-    margin-bottom: 0.5rem;
+  }
+
+  /* Progress bar spacing */
+  #progress-container {
+    margin-top: 0.5rem;
+    margin-bottom: 1rem;
+  }
+
+  /* Leaderboards */
+  #leaderboard-start table,
+  #leaderboard table {
+    font-size: 0.9rem;
   }
 
   #leaderboard-start h3,
   #leaderboard h3 {
     text-align: center;
-    font-size: 1.05rem;
+    margin-bottom: 0.7rem;
   }
 
-  #leaderboard-start table,
-  #leaderboard table {
-    font-size: 0.8rem;
-  }
-
-  #leaderboard-start th,
   #leaderboard-start td,
-  #leaderboard th,
   #leaderboard td {
-    padding: 0.3rem 0.4rem;
+    padding: 0.45rem 0.4rem;
+  }
+
+  /* Result map spacing */
+  #result-map {
+    height: 40vh;
+    margin: 1.2rem 0;
+  }
+
+  /* Name entry fields */
+  #name-entry {
+    margin-top: 1.4rem;
+    margin-bottom: 1.2rem;
+  }
+
+  #player-name {
+    padding: 0.65rem;
+    border-radius: 10px;
+    font-size: 1rem;
   }
 }
 
-/* --- Small phones (≤480px) --- */
+/* --- Small Phones (≤480px) --- */
 @media (max-width: 480px) {
-  html, body {
-    font-size: 14px;
-  }
 
-  .container {
-    padding: 0.6rem;
-  }
+  body, html { font-size: 15px; }
 
-  .header h1 {
-    font-size: 1.2rem;
-  }
+  .container { padding: 0.8rem; }
 
-  #map, #result-map {
-    height: 28vh;
-  }
+  .header h1 { font-size: 1.3rem; }
+
+  #map { height: 32vh; }
 
   .photo-wrap img {
-    max-height: 34vh;
+    max-height: 32vh;
   }
 
+  /* More vertical spacing */
   #question-text {
-    font-size: 0.9rem;
+    margin-top: 0.5rem;
+    margin-bottom: 0.7rem;
+  }
+
+  .btn {
+    padding: 0.65rem;
+    font-size: 0.95rem;
   }
 
   #score-indicator,
   #round-indicator,
   #timer-display,
   #hint-text {
-    font-size: 0.85rem;
-  }
-
-  .btn {
     font-size: 0.9rem;
-    padding: 0.5rem 0.8rem;
+    margin-bottom: 0.4rem;
   }
 
-  .map-legend {
-    font-size: 0.7rem;
-    padding: 6px 8px;
+  #streak-indicator {
+    text-align: center;
+    margin-bottom: 0.4rem;
   }
 
-  .map-legend .legend-color {
-    width: 10px;
-    height: 10px;
+  /* Better leaderboard spacing */
+  #leaderboard-start td, 
+  #leaderboard td {
+    padding: 0.35rem 0.3rem;
+  }
+
+  .controls {
+    gap: 0.6rem;
   }
 }
