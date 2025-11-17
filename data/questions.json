@@ -385,6 +385,15 @@
     "lat": 47.37526131507343,
     "lng": 8.548974191641047,
     "hint": "Building next to the main building"
+  },
+  {
+    "id": 44,
+    "question": "Where is this picture located?",
+    "image": "images/RWI1.jpg",
+    "answer": "RWI Gebäude",
+    "lat": 47.37333571188728,
+    "lng": 8.550425463806771,
+    "hint": "Building next to the main building"
   }
 
 ]
