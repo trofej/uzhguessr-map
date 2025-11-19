@@ -237,6 +237,7 @@ async function startGame() {
 
 // --- Round ---
 function renderRound() {
+  window.scrollTo({ top: 0, behavior: "smooth" });
   clearGuessArtifacts();
   guessLocked = false;
   userGuess = null;
