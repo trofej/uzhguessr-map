@@ -30,7 +30,6 @@ const btnSaveScore = document.getElementById("btn-save-score");
 const leaderboardBody = document.getElementById("leaderboard-body");
 const leaderboardBodyStart = document.getElementById("leaderboard-body-start");
 const btnConfirmGuess = document.getElementById("btn-confirm-guess");
-const btnClearGuess = document.getElementById("btn-clear-guess");
 const gamesPlayedDisplay = document.getElementById("games-played");
 const timerDisplay = document.getElementById("timer-display");
 const streakBar = document.getElementById("streak-bar");
@@ -204,7 +203,6 @@ function handleTimeout() {
   playSound("wrong"); // 🆕 play timeout "wrong" sound
 
   btnConfirmGuess.disabled = true;
-  btnClearGuess.disabled = true;
   btnNext.disabled = false;
 }
 
@@ -254,7 +252,8 @@ function renderRound() {
   const progress = ((currentIndex) / gameQuestions.length) * 100;
   document.getElementById("progress-bar").style.width = `${progress}%`;
   questionImage.src = q.image;
-  btnConfirmGuess.disabled = btnClearGuess.disabled = btnNext.disabled = true;
+  btnConfirmGuess.disabled = true;
+  btnNext.disabled = true;
 
   // 🧭 Mini-map reveal effect
   const mapEl = document.getElementById("map");
@@ -301,7 +300,7 @@ function placeGuess(lat, lng) {
     radius: 8, color: "#c9a600", weight: 3,
     fillColor: "#ffeb3b", fillOpacity: 1,
   }).addTo(map).bindTooltip("Your Guess", { permanent: true, direction: "top", offset: [0, -6] });
-  btnConfirmGuess.disabled = false; btnClearGuess.disabled = false;
+  btnConfirmGuess.disabled = false;
 }
 
 // --- Confirm Guess ---
@@ -649,14 +648,7 @@ async function renderStartLeaderboard() {
 
 // --- Events ---
 btnConfirmGuess.addEventListener("click", confirmGuess);
-btnClearGuess.addEventListener("click", () => {
-  if (!guessLocked && guessMarker) {
-    map.removeLayer(guessMarker);
-    guessMarker = null;
-    userGuess = null;
-    btnConfirmGuess.disabled = btnClearGuess.disabled = true;
-  }
-});
+
 btnNext.addEventListener("click", () => {
   currentIndex < gameQuestions.length - 1 ? renderRound(++currentIndex) : finish();
   const progress = ((currentIndex) / gameQuestions.length) * 100;
