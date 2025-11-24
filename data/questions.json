@@ -394,6 +394,42 @@
     "lat": 47.37333571188728,
     "lng": 8.550425463806771,
     "hint": "Building next to the main building"
+  },
+  {
+    "id": 45,
+    "question": "Where is this picture located?",
+    "image": "images/gebäude 20.jpg",
+    "answer": "this location",
+    "lat": 47.373981356101126,
+    "lng": 8.549201132825647,
+    "hint": "Building next to the main building"
+  },
+  {
+    "id": 46,
+    "question": "Where is this picture located?",
+    "image": "images/HG1.jpg",
+    "answer": "this stairs",
+    "lat": 47.37463672223605,
+    "lng": 8.548841784450186,
+    "hint": "Inside the main building"
+  },
+  {
+    "id": 47,
+    "question": "Where is this picture located?",
+    "image": "images/farbiges gebäude.jpg",
+    "answer": "SOE Gebäude",
+    "lat": 47.37357841904043,
+    "lng": 8.549326383166493,
+    "hint": "Building next to the main building"
+  },
+  {
+    "id": 48,
+    "question": "Where is this picture located?",
+    "image": "images/Deutsches Seminar.jpg",
+    "answer": "Deutsches Seminar",
+    "lat": 47.3730950818685,
+    "lng": 8.549512224538455,
+    "hint": "Building next to the main building"
   }
-
+  
 ]
