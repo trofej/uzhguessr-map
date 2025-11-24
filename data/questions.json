@@ -101,7 +101,7 @@
   {
     "id": 12,
     "question": "Where is Theologisches Seminar Kirchgasse located?",
-    "image": "images/Theologisches Seminar Kirchgasse.jpg",
+    "image": "images/Kirchgasse.jpg",
     "answer": "Theologisches Seminar Kirchgasse",
     "lat": 47.370057,
     "lng": 8.544519,
@@ -430,6 +430,24 @@
     "lat": 47.3730950818685,
     "lng": 8.549512224538455,
     "hint": "Building next to the main building"
+  },
+  {
+    "id": 49,
+    "question": "Where is this picture located?",
+    "image": "images/Park.jpg",
+    "answer": "this location",
+    "lat": 47.371857112467204,
+    "lng": 8.549374551802158,
+    "hint": "Near the Art Museum"
+  },
+  {
+    "id": 50,
+    "question": "Where is this picture located?",
+    "image": "images/Erziehungswissenschaften.jpg",
+    "answer": "Institut für Erziehungswissenschaften",
+    "lat": 47.37143858873226,
+    "lng": 8.548691516615476,
+    "hint": "Near the Art Museum"
   }
   
 ]
